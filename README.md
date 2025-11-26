@@ -1,0 +1,252 @@
+# Book Reader – Scholastic Learning Zone Automation
+
+A small but production-grade Python automation tool that assists with reading and quizzes in **Scholastic Learning Zone (SLZ)**.
+
+The goal is to behave like a focused personal assistant:
+
+- Open the SLZ student login URL in Chrome.
+- Let you log in manually, then continue the automation.
+- Navigate to a chosen book and start reading, with a **visible reading progress indicator**.
+- After reading, open the associated **quiz**, capture questions and options, and call a **remote OpenAI‑compatible LLM** to suggest the best answers.
+- Show the AI suggestion **inside the same browser tab** via an in-page overlay so the student only has one window in focus.
+
+This repository is structured, configurable, and testable in a way that reflects modern full‑stack engineering practices.
+
+> **Disclaimer**
+> This project is intended for **personal learning assistance only**. Respect Scholastic’s Terms of Service and your school’s policies. Do not use it for cheating, mass-scraping, or abusive traffic.
+
+---
+
+## Features
+
+- **Chrome browser automation (Selenium)**
+  - Uses `webdriver-manager` to download and manage the correct ChromeDriver.
+  - Supports headless and non-headless modes via config.
+
+- **Manual, explicit login flow**
+  - Reads `SLZ_BASE_URL` (deep login URL) from environment or `config.yaml`.
+  - Always opens the SLZ login page in Chrome and asks you to log in manually.
+  - Only proceeds once you confirm in the console that you are logged in.
+
+- **Config-driven behavior**
+  - Central `config.yaml` + `.env` with typed dataclass configuration.
+  - Tunable reading duration, scroll speed, and maximum quiz questions.
+
+- **LLM-powered quiz assistance (remote, OpenAI-compatible)**
+  - Uses a pluggable `LLMClient` abstraction.
+  - Ships with a `RemoteLLMClient` that targets an OpenAI-style `/chat/completions` endpoint.
+  - Prompts are specialized for reading comprehension and multiple-choice questions.
+
+- **Optional Tkinter desktop controller**
+  - Small GUI window to launch SLZ, start auto-reading, and start the quiz assistant.
+  - Chrome remains a normal external window; Tkinter is only the control panel.
+
+- **User experience focus**
+  - Reading phase will show a **progress indicator** so you can see that scrolling is happening.
+  - Quiz suggestions are rendered **inside the SLZ tab** using a small in-page overlay injected via JavaScript.
+
+- **Engineering practices**
+  - Clear layering: `config` / `automation` / `ai` / `scripts`.
+  - Uses Python `dataclasses` for configuration.
+  - Centralized logging with structured messages.
+  - Designed for extension (more SLZ programs, different LLM providers, fully automated answers, etc.).
+
+---
+
+## Project Structure
+
+```text
+book-reader/
+  PLAN.md                   # High-level design document
+  README.md                 # This file
+  requirements.txt          # Python dependencies
+  config.yaml               # Non-secret configuration (URLs, timings, etc.)
+  .env.example              # Example environment variables
+  .env                      # Your real secrets (ignored by Git)
+  src/
+    __init__.py
+    main.py                 # Main entrypoint (login + orchestration)
+    automation/
+      __init__.py
+      browser.py            # Selenium Chrome setup and options
+      workflows.py          # Login flow (auto + manual fallback), later reading/quiz flows
+    ai/
+      __init__.py
+      base.py               # `LLMClient` interface
+      remote_client.py      # OpenAI-style remote LLM implementation
+      prompts.py            # Prompt builder for quiz questions
+    config/
+      __init__.py
+      settings.py           # Typed configuration loading from .env + config.yaml
+    ui/
+      __init__.py
+      tk_gui.py             # Tkinter desktop controller
+  scripts/
+    run_slz_automation.py   # CLI entrypoint (ensures src/ on sys.path and calls main)
+    run_gui.py              # Tkinter GUI entrypoint
+```
+
+The design deliberately keeps **SLZ-specific selectors** and **LLM wiring** in their own modules so they can be adapted without rewriting the entire application.
+
+---
+
+## Prerequisites
+
+- **Operating system**: Windows (tested) – other platforms may work with minor adjustments.
+- **Python**: 3.11+ recommended.
+- **Browser**: Google Chrome installed and up-to-date.
+- **Accounts**:
+  - Valid **Scholastic Learning Zone** student account.
+  - Valid **OpenAI API key** (or compatible provider with the same API surface).
+
+---
+
+## Setup
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/your-username/book-reader.git
+cd book-reader
+```
+
+### 2. Create and activate a virtual environment
+
+```bash
+python -m venv .venv
+.\.venv\Scripts\activate
+# On PowerShell, you might use: .venv\Scripts\Activate.ps1
+```
+
+### 3. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Configure environment variables
+
+1. Copy the example env file:
+
+   ```bash
+   copy .env.example .env
+   ```
+
+2. Edit `.env` and fill in your values:
+
+   ```env
+   OPENAI_API_KEY=sk-...your_real_key...
+   SLZ_BASE_URL=https://slz02.scholasticlearningzone.com/resources/dp-int/dist/#/login3/student/PHL9tjd
+   ```
+
+   Notes:
+   - `OPENAI_API_KEY` is required for the LLM quiz assistance.
+   - `SLZ_BASE_URL` should be the exact SLZ login URL you normally use.
+
+### 5. Adjust config (optional)
+
+Open `config.yaml` to tune behavior:
+
+```yaml
+slz:
+  base_url: "https://slz02.scholasticlearningzone.com/resources/dp-int/dist/#/login3/student/PHL9tjd"
+
+automation:
+  book_title: ""                 # TODO: used later for book selection
+  read_scroll_step_seconds: 2.0   # How often to scroll while "reading"
+  read_total_seconds: 120         # Total time to keep scrolling
+  max_quiz_questions: 20          # Safety cap on number of quiz questions
+  headless: false                 # Set true to run Chrome without UI
+
+llm:
+  provider: "openai"
+  base_url: "https://api.openai.com/v1"
+  model: "gpt-4o-mini"           # Cost-efficient model for quiz assistance
+```
+
+The environment variable `SLZ_BASE_URL` overrides `slz.base_url` in `config.yaml`, which makes it easy to keep secrets out of version control.
+
+---
+
+## How to Run
+
+From the project root with the virtual environment active:
+
+```bash
+python scripts\run_slz_automation.py
+```
+
+Current flow:
+
+1. **Configuration & driver setup**
+   - Loads `.env` and `config.yaml` via `config.settings.load_config()`.
+   - Initializes Chrome WebDriver with `automation.browser.create_driver()`.
+
+2. **Login phase** (`automation.workflows.login`)
+   - Opens `SLZ_BASE_URL` (or `slz.base_url` if no env override).
+   - Asks you to log in manually in the browser window.
+   - Continues only after you press Enter in the console to confirm you are logged in.
+
+3. **Post-login (work in progress)**
+   - After login, the script will be extended to:
+     - Navigate to a configured book.
+     - Start the reading view and auto-scroll with a progress indicator.
+     - Start the quiz, scrape questions and options.
+     - Call the LLM and inject an in-page overlay with suggested answers.
+
+For now, the focus is on a reliable, configurable login foundation. The rest of the workflow is designed in `PLAN.md` and implemented incrementally.
+
+---
+
+## Design & Architecture Notes
+
+- **Separation of concerns**
+  - `config` only knows about configuration and does not depend on Selenium or OpenAI.
+  - `automation` only knows about the browser and SLZ UI.
+  - `ai` only knows about prompts and LLM APIs.
+
+- **Typed configuration**
+  - Uses `dataclasses` for `SLZConfig`, `AutomationConfig`, `LLMConfig`, and `AppConfig`.
+  - Centralized config loading makes it easy to enforce required values and provide safe defaults.
+
+- **LLM abstraction**
+  - `LLMClient` defines `choose_answer(question, options)`.
+  - The default `RemoteLLMClient` is OpenAI-style, but a local or alternative provider can be plugged in later without touching the calling code.
+
+- **Resilience**
+  - Manual login keeps you in control and avoids brittle credential automation.
+  - Errors from the LLM layer are surfaced via logs with helpful context.
+
+---
+
+## Roadmap
+
+Planned enhancements (some already partially implemented in code/PLAN.md):
+
+- **Book selection** by title or index from the SLZ shelf.
+- **Reading automation**:
+  - Auto-scroll through the book at a configurable pace.
+  - Terminal and/or overlay-based progress bar.
+- **Quiz assistant**:
+  - Parse each quiz question + options from SLZ DOM.
+  - Call LLM and show suggestion in a small overlay within the same tab.
+  - Allow re-asking or overriding suggestions.
+- **Provider flexibility**:
+  - Additional `LLMClient` implementations for local models or other cloud providers.
+- **Testing harness**:
+  - Unit tests for prompt building and configuration.
+  - Optional integration tests against a mock SLZ page.
+
+---
+
+## Security & Ethics
+
+- Do **not** commit your real `.env` or API keys.
+- Only point the automation at accounts you own and have permission to use.
+- Use this project as a study helper, not as a way to bypass learning.
+
+---
+
+## License
+
+You can choose and add a license that matches your needs (for example, MIT). Until then, treat this code as “all rights reserved” by default.

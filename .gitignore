@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.swp
+*.log
+.db
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Environment / secrets
+.env
+.ENV
+.env.*
+
+# IDE / editor
+.vscode/
+.idea/
+*.code-workspace
+
+# OS / misc
+.DS_Store
+Thumbs.db
+
+# Local data / screenshots / debug
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# PyInstaller / build artifacts
+build/
+dist/
+*.spec
+
+# Coverage / test
+htmlcov/
+.tox/
+.coverage*
+.pytest_cache/

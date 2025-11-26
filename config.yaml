@@ -1,0 +1,14 @@
+slz:
+  base_url: "https://slz02.scholasticlearningzone.com/resources/dp-int/dist/#/login3/student/PHL9tjd"
+
+automation:
+  book_title: ""
+  read_scroll_step_seconds: 2.0
+  read_total_seconds: 120
+  max_quiz_questions: 20
+  headless: false
+
+llm:
+  provider: "openai"
+  base_url: "https://api.openai.com/v1"
+  model: "gpt-4o-mini"
