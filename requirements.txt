@@ -3,3 +3,6 @@ webdriver-manager
 python-dotenv
 PyYAML
 requests
+Pillow
+easyocr
+numpy

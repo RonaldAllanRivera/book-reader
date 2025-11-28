@@ -93,6 +93,11 @@
     - Scroll step every X seconds.
     - Scroll duration configurable.
     - Show a reading progress bar/indicator (e.g., based on elapsed time or page count) so you can see reading progress while it runs.
+  - For image-based books, capture screenshots of the reader and run local OCR (easyocr) to build a text transcript and show excerpts in the UI/browser overlay.
+  - In the Tkinter GUI, support a **screenshot-based reading workflow**:
+    - Use Windows or a tool like Lightshot to take page screenshots (full screen or region).
+    - Click **Paste Screenshot** in the GUI to add each page; all pasted pages are shown as thumbnails.
+    - Click **Transcribe Screenshots** to batch-run OCR over all pasted pages, updating a progress bar and logging the full transcript per page in the GUI.
   - Click `STOP READING` (or close reading window) when done.
 
 ### 4.3 Quiz Capture & AI Suggestion

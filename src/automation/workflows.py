@@ -1,7 +1,12 @@
+import io
 import logging
+import os
 import time
 from typing import List, Tuple
 
+import easyocr
+import numpy as np
+from PIL import Image
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -25,8 +30,67 @@ def login(driver: WebDriver, app_config: AppConfig) -> None:
     input("When you are logged in, press Enter here to continue...")
 
 
-def auto_read_with_progress(driver: WebDriver, app_config: AppConfig) -> None:
-    """Auto-scroll and move across multiple pages, with a console progress bar."""
+def fill_login_form(driver: WebDriver, app_config: AppConfig) -> None:
+    """Fill the SLZ login form using configured credentials, without clicking Login."""
+    if not app_config.username or not app_config.password:
+        logging.warning(
+            "SLZ_USERNAME and/or SLZ_PASSWORD are not configured; cannot fill login form.",
+        )
+        return
+
+    logging.info(
+        "Filling SLZ login form using credentials from environment for user '%s'.",
+        app_config.username,
+    )
+    wait = WebDriverWait(driver, 20)
+
+    try:
+        username_input = wait.until(
+            EC.presence_of_element_located(
+                (
+                    By.CSS_SELECTOR,
+                    "input[name='username'], input[formcontrolname='username']",
+                )
+            )
+        )
+        password_input = wait.until(
+            EC.presence_of_element_located(
+                (
+                    By.CSS_SELECTOR,
+                    "input[type='password'], input[name='password'], input[formcontrolname='password']",
+                )
+            )
+        )
+
+        username_input.clear()
+        username_input.send_keys(app_config.username)
+        password_input.clear()
+        password_input.send_keys(app_config.password)
+
+        logging.info(
+            "Login form fields filled. Please review in Chrome and click the Login button manually.",
+        )
+    except (TimeoutException, NoSuchElementException) as exc:
+        logging.warning("Unable to locate login inputs to fill form: %s", exc)
+    except Exception as exc:  # noqa: BLE001
+        logging.warning("Unexpected error while filling login form: %s", exc)
+
+
+def auto_read_with_progress(
+    driver: WebDriver,
+    app_config: AppConfig,
+    stop_requested=None,
+    on_page_excerpt=None,
+    on_progress=None,
+) -> None:
+    """Auto-scroll and move across multiple pages, with a console progress bar.
+
+    If stop_requested is provided, it should be a callable returning a bool; when it
+    returns True, the reading loop will stop early.
+
+    If on_page_excerpt is provided, it should be a callable accepting (page_number, excerpt)
+    and will be invoked when the transcript is (re)calculated for a page.
+    """
     total_seconds = app_config.automation.read_total_seconds
     step_seconds = app_config.automation.read_scroll_step_seconds
     if total_seconds <= 0 or step_seconds <= 0:
@@ -44,15 +108,33 @@ def auto_read_with_progress(driver: WebDriver, app_config: AppConfig) -> None:
     bar_width = 30
     current_page = _get_current_page(driver)
 
+    if callable(on_progress):
+        try:
+            on_progress(0.0, 0.0, total_seconds)
+        except Exception:
+            pass
+
     _ensure_reading_overlay(driver)
     try:
         page_text = _extract_page_text(driver)
     except Exception:
         page_text = ""
     _update_reading_overlay(driver, current_page, page_text)
+    if callable(on_page_excerpt):
+        try:
+            on_page_excerpt(current_page, page_text)
+        except Exception:
+            pass
+
+    last_page = current_page
 
     for _ in range(steps):
-        driver.execute_script("window.scrollBy(0, window.innerHeight * 0.8);")
+        if callable(stop_requested) and stop_requested():
+            logging.info("Stop requested for auto-reading; exiting early.")
+            break
+
+        # Wait for the next step interval while the user may manually change pages.
+        time.sleep(step_seconds)
 
         elapsed = time.time() - start_time
         progress = min(1.0, elapsed / total_seconds) if total_seconds > 0 else 1.0
@@ -64,34 +146,34 @@ def auto_read_with_progress(driver: WebDriver, app_config: AppConfig) -> None:
             flush=True,
         )
 
-        # If we're near the bottom of the current page, try going to the next page.
-        try:
-            at_bottom = bool(
-                driver.execute_script(
-                    "return (window.innerHeight + window.scrollY) >= "
-                    "(document.body.scrollHeight - 10);"
-                )
-            )
-        except Exception:
-            at_bottom = False
+        if callable(on_progress):
+            try:
+                on_progress(progress, elapsed, total_seconds)
+            except Exception:
+                pass
 
-        if at_bottom:
-            new_page = _get_current_page(driver)
-            if new_page == current_page and _click_next_page(driver):
-                # Give the new page a moment to render, then reset scroll and update page.
-                time.sleep(1.0)
-                driver.execute_script("window.scrollTo(0, 0);")
-                current_page = _get_current_page(driver)
+        # If the user manually changed pages, refresh OCR for the new page.
+        try:
+            page_now = _get_current_page(driver)
+        except Exception:
+            page_now = last_page
+
+        if page_now != last_page:
+            last_page = page_now
+            try:
+                page_text = _extract_page_text(driver)
+            except Exception:
+                page_text = ""
+            _update_reading_overlay(driver, page_now, page_text)
+            if callable(on_page_excerpt):
                 try:
-                    page_text = _extract_page_text(driver)
+                    on_page_excerpt(page_now, page_text)
                 except Exception:
-                    page_text = ""
-                _update_reading_overlay(driver, current_page, page_text)
+                    pass
 
         remaining = total_seconds - elapsed
         if remaining <= 0:
             break
-        time.sleep(step_seconds)
 
     print()
     logging.info("Auto-reading completed.")
@@ -154,30 +236,61 @@ def _update_reading_overlay(driver: WebDriver, page_number: int, excerpt: str) -
     driver.execute_script(script, message)
 
 
+_EASYOCR_READER = None
+
+
+def _get_ocr_reader():
+    global _EASYOCR_READER
+    if _EASYOCR_READER is None:
+        try:
+            _EASYOCR_READER = easyocr.Reader(["en"], gpu=False)
+        except Exception as exc:  # noqa: BLE001
+            logging.warning("Failed to initialize easyocr Reader: %s", exc)
+            _EASYOCR_READER = None
+    return _EASYOCR_READER
+
+
 def _extract_page_text(driver: WebDriver, max_chars: int = 600) -> str:
-    script = """
-    return (function() {
-        function getText(el) {
-            return el && el.innerText ? el.innerText.trim() : '';
-        }
+    """Extract page text using local OCR (easyocr) on a screenshot.
 
-        var container =
-            document.querySelector('app-page, app-reader-page, .page, .page-wrapper, .page-content') ||
-            document.querySelector('main, .content, .reader');
-
-        var text = getText(container);
-        if (!text) {
-            text = getText(document.body);
-        }
-
-        if (text.length > arguments[0]) {
-            text = text.substring(0, arguments[0]) + '\n…';
-        }
-        return text;
-    })();
+    This works even when the book content is rendered as an image in the reader.
     """
-    text = driver.execute_script(script, max_chars) or ""
-    return str(text)
+
+    reader = _get_ocr_reader()
+    if reader is None:
+        return ""
+
+    try:
+        png_bytes = driver.get_screenshot_as_png()
+    except Exception as exc:  # noqa: BLE001
+        logging.warning("Failed to capture screenshot for OCR: %s", exc)
+        return ""
+
+    try:
+        image = Image.open(io.BytesIO(png_bytes)).convert("RGB")
+    except Exception as exc:  # noqa: BLE001
+        logging.warning("Failed to open screenshot image for OCR: %s", exc)
+        return ""
+
+    try:
+        img_np = np.array(image)
+    except Exception as exc:  # noqa: BLE001
+        logging.warning("Failed to convert screenshot image to numpy array: %s", exc)
+        return ""
+
+    try:
+        lines = reader.readtext(img_np, detail=0, paragraph=True) or []
+    except Exception as exc:  # noqa: BLE001
+        logging.warning("easyocr OCR failed: %s", exc)
+        return ""
+
+    text = "\n".join(line.strip() for line in lines if isinstance(line, str)).strip()
+    if not text:
+        return ""
+
+    if len(text) > max_chars:
+        text = text[:max_chars] + "\n…"
+    return text
 
 
 def _click_next_page(driver: WebDriver) -> bool:
@@ -203,6 +316,26 @@ def _click_next_page(driver: WebDriver) -> bool:
     except Exception as exc:
         logging.warning("Failed to click next page button: %s", exc)
         return False
+
+
+def refresh_reading_transcript(
+    driver: WebDriver,
+    app_config: AppConfig,
+    max_chars: int = 600,
+) -> tuple[int, str]:
+    """Ensure the reading overlay exists and refresh its content for the current page.
+
+    Returns a tuple of (page_number, excerpt_text).
+    """
+    _ensure_reading_overlay(driver)
+    current_page = _get_current_page(driver)
+    try:
+        page_text = _extract_page_text(driver, max_chars=max_chars)
+    except Exception:
+        page_text = ""
+    _update_reading_overlay(driver, current_page, page_text)
+    logging.info("Reading transcript updated for page %s.", current_page)
+    return current_page, page_text
 
 
 def _ensure_overlay(driver: WebDriver) -> None:

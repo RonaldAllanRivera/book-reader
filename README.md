@@ -37,8 +37,13 @@ This repository is structured, configurable, and testable in a way that reflects
   - Ships with a `RemoteLLMClient` that targets an OpenAI-style `/chat/completions` endpoint.
   - Prompts are specialized for reading comprehension and multiple-choice questions.
 
+- **Optional local OCR for image-based books**
+  - Uses **easyocr** (pure-Python OCR) together with `Pillow`/`numpy` to read text from screenshots of book pages rendered as images.
+  - OCR runs locally on your CPU (no extra API cost); accuracy depends on page quality.
+
 - **Optional Tkinter desktop controller**
-  - Small GUI window to launch SLZ, start auto-reading, and start the quiz assistant.
+  - Small GUI window to launch SLZ, manage screenshots, and start the quiz assistant.
+  - Supports a **screenshot-based reading workflow**: paste page screenshots from the clipboard, see thumbnails for all pages, and batch-transcribe them with local OCR.
   - Chrome remains a normal external window; Tkinter is only the control panel.
 
 - **User experience focus**
@@ -124,13 +129,25 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
+This installs Python libraries including `easyocr`, `Pillow`, and `numpy` used for local OCR.
+
+### 3.5 Local OCR for image-based books (easyocr)
+
+The reading assistant can use **easyocr** to extract text from books rendered as images.
+
+- No separate system installer is required (no `tesseract.exe`).
+- The first time OCR runs, `easyocr` will download its model weights; this may take a minute.
+- The models are cached on disk for future runs.
+
+There is no extra configuration needed; OCR is enabled automatically when you run auto-reading or manually refresh the transcript.
+
 ### 4. Configure environment variables
 
 1. Copy the example env file:
 
-   ```bash
-   copy .env.example .env
-   ```
+```bash
+copy .env.example .env
+```
 
 2. Edit `.env` and fill in your values:
 
@@ -195,6 +212,46 @@ Current flow:
      - Call the LLM and inject an in-page overlay with suggested answers.
 
 For now, the focus is on a reliable, configurable login foundation. The rest of the workflow is designed in `PLAN.md` and implemented incrementally.
+
+### How to Run – Tkinter GUI (screenshot-based reading)
+
+For image-based books, the Tkinter GUI provides a **paste-screenshot + batch transcription** workflow.
+
+1. **Start the GUI**
+
+   ```bash
+   python scripts\run_gui.py
+   ```
+
+2. **Launch SLZ and log in**
+
+   - In the GUI, click **"1. Launch SLZ / Login"** to open the SLZ login page in Chrome.
+   - Optionally click **"Fill Login Form"** to auto-fill username/password from your `.env`, then click the Login button manually in Chrome.
+
+3. **Capture page screenshots**
+
+   - Navigate to the book reading view in Chrome.
+   - For each page you want to "read":
+     - Use Windows Snipping Tool (**Win+Shift+S**), `Print Screen`, `Alt+Print Screen`, or a tool like Lightshot to capture the page.
+     - Ensure the screenshot ends up on the clipboard (choose *Copy* in your capture tool).
+     - Switch to the Tk window and click **"Paste Screenshot"**.
+     - The GUI will:
+       - Store the image in a page list.
+       - Show a preview of the latest page and a thumbnail for each pasted screenshot.
+
+4. **Batch-transcribe all pasted pages**
+
+   - After pasting all pages (e.g., 10–50 screenshots), click **"2. Transcribe Screenshots"**.
+   - The GUI will:
+     - Run local OCR (easyocr) over each screenshot.
+     - Update a **progress bar** as it processes pages.
+     - Log the **full transcription per page** in the text area, prefixed with `Transcript page N:`.
+
+5. **Run the quiz assistant**
+
+   - In Chrome, navigate to the first quiz question for that book.
+   - In the GUI, click **"3. Start Quiz Assistant"**.
+   - The assistant will parse the current quiz question and options from the SLZ DOM, call the configured LLM, and display the suggestion in an in-page overlay inside the Chrome tab.
 
 ---
 
