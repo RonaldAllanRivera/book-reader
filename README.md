@@ -6,9 +6,9 @@ The goal is to behave like a focused personal assistant:
 
 - Open the SLZ student login URL in Chrome.
 - Let you log in manually, then continue the automation.
-- Navigate to a chosen book and start reading, with a **visible reading progress indicator**.
-- After reading, open the associated **quiz**, capture questions and options, and call a **remote OpenAI‑compatible LLM** to suggest the best answers.
-- Show the AI suggestion **inside the same browser tab** via an in-page overlay so the student only has one window in focus.
+- Help you read a chosen book by **transcribing page screenshots** with local OCR (easyocr), showing a progress indicator and full transcripts.
+- After reading, help with the associated **quiz** by **transcribing quiz screenshots** and calling a **remote OpenAI‑compatible LLM** to suggest the best answers, using the book transcript as context.
+- Surface quiz questions, options, and the AI suggestion **directly in the Tkinter GUI log**, so you can quickly see what to click in SLZ.
 
 This repository is structured, configurable, and testable in a way that reflects modern full‑stack engineering practices.
 
@@ -37,18 +37,21 @@ This repository is structured, configurable, and testable in a way that reflects
   - Ships with a `RemoteLLMClient` that targets an OpenAI-style `/chat/completions` endpoint.
   - Prompts are specialized for reading comprehension and multiple-choice questions.
 
-- **Optional local OCR for image-based books**
+-- **Local OCR for image-based books**
   - Uses **easyocr** (pure-Python OCR) together with `Pillow`/`numpy` to read text from screenshots of book pages rendered as images.
   - OCR runs locally on your CPU (no extra API cost); accuracy depends on page quality.
 
-- **Optional Tkinter desktop controller**
-  - Small GUI window to launch SLZ, manage screenshots, and start the quiz assistant.
+- **Tkinter desktop controller (recommended workflow)**
+  - Small GUI window to launch SLZ, manage **book** and **quiz** screenshots, and call the quiz assistant.
   - Supports a **screenshot-based reading workflow**: paste page screenshots from the clipboard, see thumbnails for all pages, and batch-transcribe them with local OCR.
+  - Supports a **screenshot-based quiz workflow**: paste quiz screenshots from the clipboard, transcribe them with OCR, and send question + options (plus optional book context) to the LLM.
+  - Quiz results (question, options, and which option the AI chose) are logged clearly in the GUI so you can manually click the best choice in SLZ.
   - Chrome remains a normal external window; Tkinter is only the control panel.
 
 - **User experience focus**
-  - Reading phase will show a **progress indicator** so you can see that scrolling is happening.
-  - Quiz suggestions are rendered **inside the SLZ tab** using a small in-page overlay injected via JavaScript.
+  - Reading phase (GUI) shows a **progress bar** for batch OCR of pasted book pages and logs full-page transcripts.
+  - Quiz suggestions are shown in a clear text block in the Tkinter GUI log, highlighting the option the AI chose.
+  - Optional console/overlay mode can still show suggestions inside the SLZ tab via an in-page overlay.
 
 - **Engineering practices**
   - Clear layering: `config` / `automation` / `ai` / `scripts`.
@@ -139,7 +142,7 @@ The reading assistant can use **easyocr** to extract text from books rendered as
 - The first time OCR runs, `easyocr` will download its model weights; this may take a minute.
 - The models are cached on disk for future runs.
 
-There is no extra configuration needed; OCR is enabled automatically when you run auto-reading or manually refresh the transcript.
+There is no extra configuration needed; OCR is enabled automatically when you run auto-reading from the console or batch transcription from the Tkinter GUI.
 
 ### 4. Configure environment variables
 
@@ -204,18 +207,13 @@ Current flow:
    - Asks you to log in manually in the browser window.
    - Continues only after you press Enter in the console to confirm you are logged in.
 
-3. **Post-login (work in progress)**
-   - After login, the script will be extended to:
-     - Navigate to a configured book.
-     - Start the reading view and auto-scroll with a progress indicator.
-     - Start the quiz, scrape questions and options.
-     - Call the LLM and inject an in-page overlay with suggested answers.
+3. **Post-login: Tkinter GUI workflow (recommended)**
 
-For now, the focus is on a reliable, configurable login foundation. The rest of the workflow is designed in `PLAN.md` and implemented incrementally.
+   - After login, the recommended workflow is to use the Tkinter GUI for a **paste-screenshot + transcription + quiz assistant** workflow.
 
-### How to Run – Tkinter GUI (screenshot-based reading)
+### How to Run – Tkinter GUI (recommended workflow)
 
-For image-based books, the Tkinter GUI provides a **paste-screenshot + batch transcription** workflow.
+For image-based books and quizzes, the Tkinter GUI provides a **paste-screenshot + transcription + quiz assistant** workflow.
 
 1. **Start the GUI**
 
@@ -228,30 +226,60 @@ For image-based books, the Tkinter GUI provides a **paste-screenshot + batch tra
    - In the GUI, click **"1. Launch SLZ / Login"** to open the SLZ login page in Chrome.
    - Optionally click **"Fill Login Form"** to auto-fill username/password from your `.env`, then click the Login button manually in Chrome.
 
-3. **Capture page screenshots**
+3. **Capture book page screenshots**
 
    - Navigate to the book reading view in Chrome.
    - For each page you want to "read":
      - Use Windows Snipping Tool (**Win+Shift+S**), `Print Screen`, `Alt+Print Screen`, or a tool like Lightshot to capture the page.
      - Ensure the screenshot ends up on the clipboard (choose *Copy* in your capture tool).
-     - Switch to the Tk window and click **"Paste Screenshot"**.
+     - Switch to the Tk window and click **"Paste BOOK Screenshot"**.
      - The GUI will:
        - Store the image in a page list.
        - Show a preview of the latest page and a thumbnail for each pasted screenshot.
 
-4. **Batch-transcribe all pasted pages**
+4. **Batch-transcribe all pasted book pages**
 
-   - After pasting all pages (e.g., 10–50 screenshots), click **"2. Transcribe Screenshots"**.
+   - After pasting all pages (e.g., 10–50 screenshots), click **"2. Transcribe Book Screenshots"**.
    - The GUI will:
      - Run local OCR (easyocr) over each screenshot.
      - Update a **progress bar** as it processes pages.
      - Log the **full transcription per page** in the text area, prefixed with `Transcript page N:`.
+   - While transcription is running, clicking the same button again requests a graceful stop after the current page.
 
-5. **Run the quiz assistant**
+5. **Transcribe quiz questions from screenshots**
 
-   - In Chrome, navigate to the first quiz question for that book.
-   - In the GUI, click **"3. Start Quiz Assistant"**.
-   - The assistant will parse the current quiz question and options from the SLZ DOM, call the configured LLM, and display the suggestion in an in-page overlay inside the Chrome tab.
+   - In Chrome, navigate to the quiz for the same book.
+   - For each question:
+     - Capture a screenshot that includes the full question and all answer options.
+     - Ensure the screenshot is on the clipboard.
+     - In the GUI, click **"Paste QUIZ Screenshot"**.
+     - Then click **"Transcribe Quiz Screenshot"** to run OCR on that image.
+     - The GUI logs the raw quiz OCR text so you can see what was read.
+
+6. **Ask the AI to answer the quiz from the book**
+
+   - With book pages already transcribed and a quiz screenshot transcribed:
+     - Click **"3. Answer Quiz from Book"**.
+   - The GUI will:
+     - Parse the OCR text into a question + options.
+     - Build a book context from the transcribed book pages.
+     - Call the LLM to choose the best option.
+     - Log a clear block like:
+
+       ```text
+       === Quiz (from OCR) ===
+       <question>
+
+       Options:
+       A. ...  <<< AI CHOSE THIS
+       B. ...
+       C. ...
+       D. ...
+
+       >>> Suggested answer (raw LLM response): A. ...
+       ```
+
+   - You then manually click the suggested answer in the SLZ quiz UI.
 
 ---
 
@@ -281,13 +309,12 @@ For image-based books, the Tkinter GUI provides a **paste-screenshot + batch tra
 Planned enhancements (some already partially implemented in code/PLAN.md):
 
 - **Book selection** by title or index from the SLZ shelf.
-- **Reading automation**:
+- **Reading automation (console/overlay mode)**:
   - Auto-scroll through the book at a configurable pace.
   - Terminal and/or overlay-based progress bar.
-- **Quiz assistant**:
-  - Parse each quiz question + options from SLZ DOM.
-  - Call LLM and show suggestion in a small overlay within the same tab.
-  - Allow re-asking or overriding suggestions.
+- **Quiz assistant (enhancements)**:
+  - More robust parsing of quiz OCR for a variety of layouts.
+  - Optional ability to re-ask or override suggestions from the GUI.
 - **Provider flexibility**:
   - Additional `LLMClient` implementations for local models or other cloud providers.
 - **Testing harness**:

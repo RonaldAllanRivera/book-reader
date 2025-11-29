@@ -1,18 +1,15 @@
 # Scholastic Learning Zone Automation – PLAN
 
 ## 1. Goals
-- **Automate reading workflow** in Scholastic Learning Zone (SLZ):
-  - Open browser
-  - Log in with saved credentials (not hardcoded in repo)
-  - Navigate to a selected book
-  - Click `READ` / `START READING`
-  - Optionally auto-scroll pages for a configurable time
-  - Click `STOP READING`
-  - Click `QUIZ` and show questions
-- **Assist with quiz answers**:
-  - Capture quiz questions and options from the page
-  - Use an AI model to propose the best answer
-  - You manually click the answer (no auto-answering to reduce risk & keep control)
+- **Assist with SLZ reading & quizzes** while keeping you in control:
+  - Open browser and log in with saved credentials (from `.env` / config, not hardcoded).
+  - Navigate to a selected book and read it.
+  - Use a **Tkinter desktop GUI** to:
+    - Capture **book pages** as screenshots from the clipboard and transcribe them with local OCR (easyocr), showing a progress bar and full-page transcripts.
+    - Capture **quiz questions** as screenshots from the clipboard, transcribe them with OCR, and ask an AI model for the best answer using the book transcript as context.
+  - You always **manually click the answers** in SLZ (no auto-answering).
+- **Optional CLI / overlay mode** for advanced use:
+  - Use Selenium-only flows that read directly from the browser (auto-reading overlay + DOM-based quiz extraction with in-page suggestions).
 - **Use free / low‑cost AI** where possible.
 
 ---
@@ -86,44 +83,54 @@
 
 ### 4.2 Reading Automation
 
-- After opening book page:
-  - Click `READ` button.
-  - Wait for reading iframe / new window.
-  - Optionally **auto-scroll** slowly through pages/viewport:
-    - Scroll step every X seconds.
-    - Scroll duration configurable.
-    - Show a reading progress bar/indicator (e.g., based on elapsed time or page count) so you can see reading progress while it runs.
-  - For image-based books, capture screenshots of the reader and run local OCR (easyocr) to build a text transcript and show excerpts in the UI/browser overlay.
-  - In the Tkinter GUI, support a **screenshot-based reading workflow**:
-    - Use Windows or a tool like Lightshot to take page screenshots (full screen or region).
-    - Click **Paste Screenshot** in the GUI to add each page; all pasted pages are shown as thumbnails.
-    - Click **Transcribe Screenshots** to batch-run OCR over all pasted pages, updating a progress bar and logging the full transcript per page in the GUI.
-  - Click `STOP READING` (or close reading window) when done.
+- **Preferred (Tkinter GUI, screenshot-based):**
+  - Open the book reader in SLZ manually in Chrome.
+  - For each page you want to "read":
+    - Use Windows Snipping Tool / Print Screen / Lightshot to capture the page (ensure it is copied to the clipboard).
+    - In the Tk GUI, click **"Paste BOOK Screenshot"** to add that page. All pages are shown as thumbnails and the latest page appears in a preview area.
+  - When you have pasted all pages for a session, click **"2. Transcribe Book Screenshots"**:
+    - The GUI batch-runs local OCR (easyocr) over each screenshot.
+    - A **progress bar** shows how many pages have been processed.
+    - The **full transcript per page** is logged in the GUI text area as `Transcript page N:` blocks.
+  - You can click the same button again while it is running to request a graceful stop after the current page.
+
+- **Optional (CLI overlay, browser-based):**
+  - Use `auto_read_with_progress` from the console entrypoint to:
+    - Run a timed reading session while you manually change pages in the SLZ reader.
+    - Periodically capture Selenium screenshots, run OCR, and show short excerpts in a small reading overlay injected into the page.
+    - Report progress in the console and via a simple progress callback.
 
 ### 4.3 Quiz Capture & AI Suggestion
 
-- After reading is done:
-  - Click `QUIZ` button or equivalent.
-  - For each question page:
-    - Scrape:
-      - Question text
-      - Answer options text
-    - Build a structured payload, e.g.:
-      ```json
-      {
-        "question": "...",
-        "options": ["A ...", "B ...", "C ...", "D ..."]
-      }
-      ```
-    - Send that to LLM with a **strict system prompt**:
-      - You are a reading comprehension assistant.
-      - Choose the single best option.
-      - Answer only with the letter and full option text.
-    - Display AI answer inside the same browser tab using a small in-page overlay/panel injected via JavaScript (e.g., fixed box at bottom/right):
-      - `Q1: Suggestion -> B: ...`
-    - You manually click the answer.
+- **Preferred (Tkinter GUI, screenshot-based quiz):**
+  - In Chrome, open the quiz for the book you just read.
+  - For each question:
+    - Capture a screenshot that includes the full question text and all options.
+    - With that screenshot on the clipboard, click **"Paste QUIZ Screenshot"** in the Tk GUI.
+    - Click **"Transcribe Quiz Screenshot"** to run OCR and log the quiz text.
+    - Click **"3. Answer Quiz from Book"**:
+      - The GUI parses the OCR text into a single question string and a list of options.
+      - It builds a book context string from all transcribed book pages.
+      - It sends question + options (+ optional book context) to the configured LLM with a strict reading-comprehension prompt.
+      - The result is logged in the GUI in a clear block, e.g.:
+        - `=== Quiz (from OCR) ===`
+        - Question line(s)
+        - `Options:`
+        - `A. ...`
+        - `B. ...  <<< AI CHOSE THIS`
+        - ...
+        - `>>> Suggested answer (raw LLM response): ...`
+    - You read the suggestion and **manually click** the chosen answer in SLZ.
 
-- Optional: ask if you want to **re-ask** AI if you disagree.
+- **Optional (CLI overlay, DOM-based quiz):**
+  - From the console entrypoint, navigate to the quiz screen and call `run_quiz_assistant`:
+    - Extract the current question and options directly from the SLZ DOM using JavaScript.
+    - Optionally include a trimmed book transcript as context.
+    - Send the question + options to the LLM with the same strict prompt.
+    - Show a short suggestion (e.g., `Q1: Suggestion -> B`) inside the SLZ tab via a small in-page overlay and log details to the console.
+    - Wait for you to move to the next question (and optionally stop early).
+
+- Optional future enhancement: allow you to **re-ask** the AI if you disagree with a suggestion (e.g., via a button in the GUI).
 
 ---
 

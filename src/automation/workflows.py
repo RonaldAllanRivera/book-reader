@@ -408,12 +408,32 @@ def _extract_quiz_question_and_options(driver: WebDriver) -> Tuple[str, List[str
     return question, options
 
 
-def run_quiz_assistant(driver: WebDriver, app_config: AppConfig, llm_client: LLMClient) -> None:
-    """Loop over quiz questions, show LLM suggestions in an in-page overlay."""
+def run_quiz_assistant(
+    driver: WebDriver,
+    app_config: AppConfig,
+    llm_client: LLMClient,
+    book_context: str | None = None,
+    on_question_result=None,
+) -> None:
+    """Loop over quiz questions, show LLM suggestions in an in-page overlay.
+
+    If book_context is provided, it will be included in the prompt sent to the LLM so
+    that answers can be grounded in the transcribed book text.
+    """
+
     max_questions = app_config.automation.max_quiz_questions
     logging.info("Starting quiz assistant for up to %s questions.", max_questions)
 
     _ensure_overlay(driver)
+
+    # To avoid prompts that are too large, cap the context length.
+    if book_context:
+        trimmed_context = book_context.strip()
+        max_context_chars = 4000
+        if len(trimmed_context) > max_context_chars:
+            trimmed_context = trimmed_context[-max_context_chars:]
+    else:
+        trimmed_context = None
 
     for index in range(1, max_questions + 1):
         logging.info("Analyzing quiz question %s", index)
@@ -428,8 +448,17 @@ def run_quiz_assistant(driver: WebDriver, app_config: AppConfig, llm_client: LLM
 
         logging.info("Question %s text: %.80s", index, question.replace("\n", " "))
 
+        if trimmed_context:
+            augmented_question = (
+                "Use the following book transcript to answer the quiz question.\n\n"
+                f"Book transcript:\n{trimmed_context}\n\n"
+                f"Quiz question:\n{question}"
+            )
+        else:
+            augmented_question = question
+
         try:
-            suggestion = llm_client.choose_answer(question, options)
+            suggestion = llm_client.choose_answer(augmented_question, options)
         except Exception as exc:
             logging.error("LLM call failed for question %s: %s", index, exc)
             break
@@ -437,6 +466,12 @@ def run_quiz_assistant(driver: WebDriver, app_config: AppConfig, llm_client: LLM
         overlay_message = f"Q{index}: Suggestion -> {suggestion}"
         _update_overlay(driver, overlay_message)
         logging.info("Suggestion for Q%s: %s", index, suggestion)
+
+        if callable(on_question_result):
+            try:
+                on_question_result(index, question, options, suggestion)
+            except Exception:
+                pass
 
         user_input = input(
             "Press Enter to proceed to the next quiz question, or type 'q' to stop: "
