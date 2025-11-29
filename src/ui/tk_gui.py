@@ -51,6 +51,10 @@ class TkApp:
             button_frame,
             text="1. Launch SLZ / Login",
             command=self.on_launch,
+            bg="#1976D2",
+            fg="white",
+            activebackground="#1565C0",
+            activeforeground="white",
         )
         self.launch_button.pack(side=LEFT, padx=4)
 
@@ -58,6 +62,10 @@ class TkApp:
             button_frame,
             text="Fill Login Form",
             command=self.on_fill_login,
+            bg="#1976D2",
+            fg="white",
+            activebackground="#1565C0",
+            activeforeground="white",
         )
         self.fill_login_button.pack(side=LEFT, padx=4)
 
@@ -65,6 +73,10 @@ class TkApp:
             button_frame,
             text="Paste BOOK Screenshot",
             command=self.on_paste_screenshot,
+            bg="#2E7D32",
+            fg="white",
+            activebackground="#1B5E20",
+            activeforeground="white",
         )
         self.paste_button.pack(side=LEFT, padx=4)
 
@@ -72,6 +84,10 @@ class TkApp:
             button_frame,
             text="2. Transcribe Book Screenshots",
             command=self.on_read,
+            bg="#2E7D32",
+            fg="white",
+            activebackground="#1B5E20",
+            activeforeground="white",
         )
         self.read_button.pack(side=LEFT, padx=4)
 
@@ -79,6 +95,10 @@ class TkApp:
             button_frame,
             text="Paste QUIZ Screenshot",
             command=self.on_paste_quiz_screenshot,
+            bg="#6A1B9A",
+            fg="white",
+            activebackground="#4A148C",
+            activeforeground="white",
         )
         self.paste_quiz_button.pack(side=LEFT, padx=4)
 
@@ -86,6 +106,10 @@ class TkApp:
             button_frame,
             text="Transcribe Quiz Screenshot",
             command=self.on_transcribe_quiz,
+            bg="#6A1B9A",
+            fg="white",
+            activebackground="#4A148C",
+            activeforeground="white",
         )
         self.transcribe_quiz_button.pack(side=LEFT, padx=4)
 
@@ -93,6 +117,10 @@ class TkApp:
             button_frame,
             text="3. Answer Quiz from Book",
             command=self.on_quiz,
+            bg="#FF8F00",
+            fg="black",
+            activebackground="#FF6F00",
+            activeforeground="black",
         )
         self.quiz_button.pack(side=LEFT, padx=4)
 
@@ -100,6 +128,10 @@ class TkApp:
             button_frame,
             text="Exit",
             command=self.on_exit,
+            bg="#C62828",
+            fg="white",
+            activebackground="#B71C1C",
+            activeforeground="white",
         )
         self.exit_button.pack(side=RIGHT, padx=4)
 
@@ -136,9 +168,16 @@ class TkApp:
         scroll.pack(side=RIGHT, fill=Y)
         self.log_text.configure(yscrollcommand=scroll.set)
 
-    def _append_log(self, message: str) -> None:
+        # Configure log text tags for simple color-coding by category.
+        self.log_text.tag_config("log_info", foreground="#000000")
+        self.log_text.tag_config("log_status", foreground="#555555")
+        self.log_text.tag_config("log_book", foreground="#1B5E20")
+        self.log_text.tag_config("log_quiz", foreground="#4A148C")
+        self.log_text.tag_config("log_error", foreground="#B71C1C")
+
+    def _append_log(self, message: str, tag: str) -> None:
         self.log_text.configure(state="normal")
-        self.log_text.insert(END, message + "\n")
+        self.log_text.insert(END, message + "\n", (tag,))
         self.log_text.see(END)
         self.log_text.configure(state="disabled")
         self.status_label.configure(text=message)
@@ -224,8 +263,29 @@ class TkApp:
     def log(self, message: str) -> None:
         logging.info(message)
 
+        lower = message.lower()
+        if any(keyword in lower for keyword in ["error:", "failed", "exception", "could not"]):
+            tag = "log_error"
+        elif "quiz" in lower or "=== quiz" in lower:
+            tag = "log_quiz"
+        elif "transcript page" in lower or "transcription" in lower or "ocr" in lower:
+            tag = "log_book"
+        elif any(
+            lower.startswith(prefix)
+            for prefix in (
+                "initializing",
+                "opening slz",
+                "browser is not running",
+                "configuration loaded",
+                "chrome webdriver initialized",
+            )
+        ):
+            tag = "log_status"
+        else:
+            tag = "log_info"
+
         def _update() -> None:
-            self._append_log(message)
+            self._append_log(message, tag)
 
         self.root.after(0, _update)
 

@@ -1,19 +1,29 @@
-# Book Reader – Scholastic Learning Zone Automation
+# Book Reader – Web Reading & Quiz Automation
 
-A small but production-grade Python automation tool that assists with reading and quizzes in **Scholastic Learning Zone (SLZ)**.
+An end‑to‑end Python automation project for **browser-based reading and quiz platforms** that drives a real web app, coordinates a desktop GUI, OCR, and an LLM, and is structured like a small production system.
 
-The goal is to behave like a focused personal assistant:
+At a high level, this tool:
 
-- Open the SLZ student login URL in Chrome.
+- Open the reading platform's student login URL in Chrome.
 - Let you log in manually, then continue the automation.
 - Help you read a chosen book by **transcribing page screenshots** with local OCR (easyocr), showing a progress indicator and full transcripts.
 - After reading, help with the associated **quiz** by **transcribing quiz screenshots** and calling a **remote OpenAI‑compatible LLM** to suggest the best answers, using the book transcript as context.
-- Surface quiz questions, options, and the AI suggestion **directly in the Tkinter GUI log**, so you can quickly see what to click in SLZ.
-
-This repository is structured, configurable, and testable in a way that reflects modern full‑stack engineering practices.
+- Surface quiz questions, options, and the AI suggestion **directly in the Tkinter GUI log**, so you can quickly see what to click in the browser.
+- Wrap everything in a layered, configurable codebase with clear separation between UI, automation, config, and LLM integration.
 
 > **Disclaimer**
-> This project is intended for **personal learning assistance only**. Respect Scholastic’s Terms of Service and your school’s policies. Do not use it for cheating, mass-scraping, or abusive traffic.
+> This project is intended for **personal learning assistance only**. Respect the reading platform’s Terms of Service and your school’s policies. Do not use it for cheating, mass-scraping, or abusive traffic.
+
+---
+
+## Tech Stack (high level)
+
+- **Python 3.11+** – core language
+- **Selenium (Chrome)** – browser automation against a live SPA
+- **Tkinter** – desktop GUI for orchestration and logs
+- **easyocr + Pillow + numpy** – local OCR pipeline for screenshots
+- **HTTP/REST LLM client** – OpenAI‑style `/chat/completions` integration
+- **dotenv + YAML + dataclasses** – configuration and typed settings
 
 ---
 
@@ -24,8 +34,8 @@ This repository is structured, configurable, and testable in a way that reflects
   - Supports headless and non-headless modes via config.
 
 - **Manual, explicit login flow**
-  - Reads `SLZ_BASE_URL` (deep login URL) from environment or `config.yaml`.
-  - Always opens the SLZ login page in Chrome and asks you to log in manually.
+  - Reads `SLZ_BASE_URL` (deep login URL for your reading platform) from environment or `config.yaml`.
+  - Always opens the platform’s login page in Chrome and asks you to log in manually.
   - Only proceeds once you confirm in the console that you are logged in.
 
 - **Config-driven behavior**
@@ -41,23 +51,52 @@ This repository is structured, configurable, and testable in a way that reflects
   - Uses **easyocr** (pure-Python OCR) together with `Pillow`/`numpy` to read text from screenshots of book pages rendered as images.
   - OCR runs locally on your CPU (no extra API cost); accuracy depends on page quality.
 
-- **Tkinter desktop controller (recommended workflow)**
-  - Small GUI window to launch SLZ, manage **book** and **quiz** screenshots, and call the quiz assistant.
+-- **Tkinter desktop controller (recommended workflow)**
+  - Small GUI window to launch the reading site, manage **book** and **quiz** screenshots, and call the quiz assistant.
   - Supports a **screenshot-based reading workflow**: paste page screenshots from the clipboard, see thumbnails for all pages, and batch-transcribe them with local OCR.
   - Supports a **screenshot-based quiz workflow**: paste quiz screenshots from the clipboard, transcribe them with OCR, and send question + options (plus optional book context) to the LLM.
-  - Quiz results (question, options, and which option the AI chose) are logged clearly in the GUI so you can manually click the best choice in SLZ.
+  - Quiz results (question, options, and which option the AI chose) are logged clearly in the GUI so you can manually click the best choice in the quiz UI.
   - Chrome remains a normal external window; Tkinter is only the control panel.
 
 - **User experience focus**
   - Reading phase (GUI) shows a **progress bar** for batch OCR of pasted book pages and logs full-page transcripts.
   - Quiz suggestions are shown in a clear text block in the Tkinter GUI log, highlighting the option the AI chose.
-  - Optional console/overlay mode can still show suggestions inside the SLZ tab via an in-page overlay.
+  - Optional console/overlay mode can still show suggestions inside the browser tab via an in-page overlay.
 
 - **Engineering practices**
   - Clear layering: `config` / `automation` / `ai` / `scripts`.
   - Uses Python `dataclasses` for configuration.
   - Centralized logging with structured messages.
-  - Designed for extension (more SLZ programs, different LLM providers, fully automated answers, etc.).
+  - Designed for extension (more reading/quiz programs, different LLM providers, fully automated answers, etc.).
+
+---
+
+## What this project demonstrates
+
+This repository is intentionally structured like a small production service rather than a quick script. It demonstrates:
+
+- **End‑to‑end automation**
+  - Selenium driving a real third‑party reading/quiz SPA with login, navigation, and controlled reading/quiz flows, and a design that can be retargeted to other similar platforms.
+  - Optional DOM/JavaScript overlays for in‑page hints.
+
+- **Desktop UI development**
+  - A responsive Tkinter GUI that coordinates browser automation, local OCR, and LLM calls.
+  - Background threads to keep the UI responsive during long‑running OCR and network operations.
+
+- **Data and AI integration**
+  - Image processing / OCR pipeline using `easyocr`, `Pillow`, and `numpy`.
+  - Prompted LLM integration via an OpenAI‑style `/chat/completions` API, with a clean `LLMClient` abstraction.
+
+- **Backend‑style engineering practices**
+  - Typed configuration (`dataclasses`), `.env` + `config.yaml`, and a clear `config` module.
+  - Structured logging, error handling, and graceful shutdown of the browser and GUI.
+  - Separation of concerns between `automation`, `ai`, `config`, and `ui` packages.
+
+- **Documentation and maintainability**
+  - Up‑to‑date `PLAN.md`, `README.md`, and `CHANGELOG.md` that describe both design and behavior.
+  - Code organized for extension (additional providers, different reading/quiz programs, alternative UIs).
+
+If you want to understand the architecture quickly, skim `PLAN.md`, `src/automation/workflows.py`, `src/ui/tk_gui.py`, and `src/ai/remote_client.py` to see how the layers fit together.
 
 ---
 
@@ -94,7 +133,7 @@ book-reader/
     run_gui.py              # Tkinter GUI entrypoint
 ```
 
-The design deliberately keeps **SLZ-specific selectors** and **LLM wiring** in their own modules so they can be adapted without rewriting the entire application.
+The design deliberately keeps **site-specific selectors** and **LLM wiring** in their own modules so they can be adapted without rewriting the entire application.
 
 ---
 
@@ -104,7 +143,7 @@ The design deliberately keeps **SLZ-specific selectors** and **LLM wiring** in t
 - **Python**: 3.11+ recommended.
 - **Browser**: Google Chrome installed and up-to-date.
 - **Accounts**:
-  - Valid **Scholastic Learning Zone** student account.
+  - Valid account on a supported **online reading/quiz platform**.
   - Valid **OpenAI API key** (or compatible provider with the same API surface).
 
 ---
@@ -156,12 +195,12 @@ copy .env.example .env
 
    ```env
    OPENAI_API_KEY=sk-...your_real_key...
-   SLZ_BASE_URL=https://slz02.scholasticlearningzone.com/resources/dp-int/dist/#/login3/student/PHL9tjd
+   SLZ_BASE_URL=https://your-reading-platform.example.com/login
    ```
 
    Notes:
    - `OPENAI_API_KEY` is required for the LLM quiz assistance.
-   - `SLZ_BASE_URL` should be the exact SLZ login URL you normally use.
+   - `SLZ_BASE_URL` should be the exact login URL you normally use for your reading platform.
 
 ### 5. Adjust config (optional)
 
@@ -169,7 +208,7 @@ Open `config.yaml` to tune behavior:
 
 ```yaml
 slz:
-  base_url: "https://slz02.scholasticlearningzone.com/resources/dp-int/dist/#/login3/student/PHL9tjd"
+  base_url: "https://your-reading-platform.example.com/login"
 
 automation:
   book_title: ""                 # TODO: used later for book selection
@@ -221,9 +260,9 @@ For image-based books and quizzes, the Tkinter GUI provides a **paste-screenshot
    python scripts\run_gui.py
    ```
 
-2. **Launch SLZ and log in**
+2. **Launch the reading site and log in**
 
-   - In the GUI, click **"1. Launch SLZ / Login"** to open the SLZ login page in Chrome.
+   - In the GUI, click **"1. Launch SLZ / Login"** to open the configured login page in Chrome.
    - Optionally click **"Fill Login Form"** to auto-fill username/password from your `.env`, then click the Login button manually in Chrome.
 
 3. **Capture book page screenshots**
@@ -279,7 +318,7 @@ For image-based books and quizzes, the Tkinter GUI provides a **paste-screenshot
        >>> Suggested answer (raw LLM response): A. ...
        ```
 
-   - You then manually click the suggested answer in the SLZ quiz UI.
+   - You then manually click the suggested answer in the quiz UI.
 
 ---
 
@@ -287,7 +326,7 @@ For image-based books and quizzes, the Tkinter GUI provides a **paste-screenshot
 
 - **Separation of concerns**
   - `config` only knows about configuration and does not depend on Selenium or OpenAI.
-  - `automation` only knows about the browser and SLZ UI.
+  - `automation` only knows about the browser and the reading site UI.
   - `ai` only knows about prompts and LLM APIs.
 
 - **Typed configuration**
@@ -298,7 +337,7 @@ For image-based books and quizzes, the Tkinter GUI provides a **paste-screenshot
   - `LLMClient` defines `choose_answer(question, options)`.
   - The default `RemoteLLMClient` is OpenAI-style, but a local or alternative provider can be plugged in later without touching the calling code.
 
-- **Resilience**
+-- **Resilience**
   - Manual login keeps you in control and avoids brittle credential automation.
   - Errors from the LLM layer are surfaced via logs with helpful context.
 
@@ -308,7 +347,7 @@ For image-based books and quizzes, the Tkinter GUI provides a **paste-screenshot
 
 Planned enhancements (some already partially implemented in code/PLAN.md):
 
-- **Book selection** by title or index from the SLZ shelf.
+-- **Book selection** by title or index from the platform’s shelf.
 - **Reading automation (console/overlay mode)**:
   - Auto-scroll through the book at a configurable pace.
   - Terminal and/or overlay-based progress bar.

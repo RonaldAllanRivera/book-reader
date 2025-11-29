@@ -1,13 +1,13 @@
-# Scholastic Learning Zone Automation – PLAN
+# Book Reader Automation – PLAN
 
 ## 1. Goals
-- **Assist with SLZ reading & quizzes** while keeping you in control:
-  - Open browser and log in with saved credentials (from `.env` / config, not hardcoded).
+- **Assist with online reading & quizzes** in a browser-based book platform while keeping you in control:
+  - Open a real browser and log in with saved credentials (from `.env` / config, not hardcoded).
   - Navigate to a selected book and read it.
   - Use a **Tkinter desktop GUI** to:
     - Capture **book pages** as screenshots from the clipboard and transcribe them with local OCR (easyocr), showing a progress bar and full-page transcripts.
     - Capture **quiz questions** as screenshots from the clipboard, transcribe them with OCR, and ask an AI model for the best answer using the book transcript as context.
-  - You always **manually click the answers** in SLZ (no auto-answering).
+  - You always **manually click the answers** in the reading platform (no auto-answering).
 - **Optional CLI / overlay mode** for advanced use:
   - Use Selenium-only flows that read directly from the browser (auto-reading overlay + DOM-based quiz extraction with in-page suggestions).
 - **Use free / low‑cost AI** where possible.
@@ -58,7 +58,7 @@
 
 ### 3.3 Configuration & Secrets
 - **Config file**: `config.yaml` or `.env` for
-  - SLZ username, SLZ password (or read from OS keyring).
+  - Site username, site password (or read from OS keyring) for the reading/quiz platform.
   - Book selector strategy (title / index).
   - LLM type: `local` or `remote`.
   - LLM parameters: base URL, model name, temperature, max tokens.
@@ -70,10 +70,10 @@
 
 ### 4.1 Login & Navigation
 
-1. Start Python script: `python run_slz_automation.py`.
+1. Start Python script: `python run_slz_automation.py` (or equivalent entrypoint).
 2. Script steps (reading always followed by quiz assist):
    - Launch browser (Selenium WebDriver).
-   - Go to `https://scholasticlearningzone.com`.
+   - Go to the configured base URL of the reading platform.
    - Locate username/password fields and login button.
    - Submit and wait for landing page.
    - Navigate to the selected program / classroom / bookshelf.
@@ -84,7 +84,7 @@
 ### 4.2 Reading Automation
 
 - **Preferred (Tkinter GUI, screenshot-based):**
-  - Open the book reader in SLZ manually in Chrome.
+  - Open the book reader in your chosen platform manually in Chrome.
   - For each page you want to "read":
     - Use Windows Snipping Tool / Print Screen / Lightshot to capture the page (ensure it is copied to the clipboard).
     - In the Tk GUI, click **"Paste BOOK Screenshot"** to add that page. All pages are shown as thumbnails and the latest page appears in a preview area.
@@ -96,7 +96,7 @@
 
 - **Optional (CLI overlay, browser-based):**
   - Use `auto_read_with_progress` from the console entrypoint to:
-    - Run a timed reading session while you manually change pages in the SLZ reader.
+    - Run a timed reading session while you manually change pages in the browser-based reader.
     - Periodically capture Selenium screenshots, run OCR, and show short excerpts in a small reading overlay injected into the page.
     - Report progress in the console and via a simple progress callback.
 
@@ -120,14 +120,14 @@
         - `B. ...  <<< AI CHOSE THIS`
         - ...
         - `>>> Suggested answer (raw LLM response): ...`
-    - You read the suggestion and **manually click** the chosen answer in SLZ.
+    - You read the suggestion and **manually click** the chosen answer in the quiz UI.
 
 - **Optional (CLI overlay, DOM-based quiz):**
   - From the console entrypoint, navigate to the quiz screen and call `run_quiz_assistant`:
-    - Extract the current question and options directly from the SLZ DOM using JavaScript.
+    - Extract the current question and options directly from the site DOM using JavaScript.
     - Optionally include a trimmed book transcript as context.
     - Send the question + options to the LLM with the same strict prompt.
-    - Show a short suggestion (e.g., `Q1: Suggestion -> B`) inside the SLZ tab via a small in-page overlay and log details to the console.
+    - Show a short suggestion (e.g., `Q1: Suggestion -> B`) inside the browser tab via a small in-page overlay and log details to the console.
     - Wait for you to move to the next question (and optionally stop early).
 
 - Optional future enhancement: allow you to **re-ask** the AI if you disagree with a suggestion (e.g., via a button in the GUI).
@@ -150,7 +150,7 @@ book-reader/
     automation/
       __init__.py
       browser.py       # Selenium setup & helpers
-      selectors.py     # Encapsulated locators for SLZ pages
+      selectors.py     # Encapsulated locators for site pages
       workflows.py     # High-level flows: login, open_book, read_book, open_quiz, next_question
     ai/
       __init__.py
@@ -165,8 +165,8 @@ book-reader/
       __init__.py
       tk_gui.py        # Tkinter desktop controller for launching flows and viewing status
   scripts/
-    run_slz_automation.py
-    run_gui.py         # Entry point for the Tkinter GUI controller
+    run_slz_automation.py  # Console/CLI entrypoint (historical name, still used)
+    run_gui.py             # Entry point for the Tkinter GUI controller
 ```
 
 ---
@@ -180,7 +180,7 @@ book-reader/
   - Store credentials only in env vars / keyring, not in code.
   - Optionally use `python-keyring` for OS-secure storage.
 - **Maintainability**
-  - Encapsulate SLZ-specific selectors in `selectors.py` so maintenance is localized if UI changes.
+  - Encapsulate site-specific selectors in `selectors.py` so maintenance is localized if UI changes.
   - Use `logging` module (not `print`) with levels: INFO/DEBUG/ERROR.
 - **Reliability**
   - Explicit waits instead of `time.sleep` where possible.
@@ -189,7 +189,7 @@ book-reader/
   - All tunables in config: scroll delays, max quiz questions, LLM provider.
 - **Extensibility**
   - Design so we can later:
-    - Support multiple programs within SLZ.
+    - Support multiple reading programs / platforms.
     - Support full auto-answer (if you decide to trust the LLM that much).
 
 ---
@@ -211,7 +211,7 @@ book-reader/
      - Initialize WebDriver (e.g., Chrome) with options.
      - Helper methods: `find_click`, `wait_for`, `get_text`, `scroll`, `screenshot`.
 
-4. **SLZ selectors & workflows**
+4. **Site selectors & workflows**
    - Implement `automation/selectors.py` with locator constants/placeholders.
    - Implement `automation/workflows.py`:
      - `login(driver, config)`
@@ -239,7 +239,7 @@ book-reader/
        - Wait for user keystroke to move to next question.
 
 7. **CLI / Runner script**
-   - `scripts/run_slz_automation.py`:
+   - `scripts/run_slz_automation.py` (historical name):
      - Parse CLI args / interactive menu.
      - Initialize config, LLM client, WebDriver.
      - Run chosen workflow.
@@ -256,6 +256,6 @@ book-reader/
 - Implement project skeleton & `requirements.txt`.
 - Decide whether you prefer **local model** (fully free but heavier on your machine) or **hosted free-tier provider** first; configure `LLMClient` accordingly.
 - Once the skeleton exists, we’ll:
-  - Inspect SLZ HTML structure in your browser dev tools.
+  - Inspect the target site HTML structure in your browser dev tools.
   - Fill in real selectors in `selectors.py`.
   - Iterate on robustness of quiz extraction & AI suggestions.

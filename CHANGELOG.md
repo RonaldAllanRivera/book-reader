@@ -28,7 +28,7 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0
    - The legacy DOM-based quiz extraction with in-page overlay remains available as an optional console/overlay mode for advanced use.
 
 ### Existing Features
-- Manual login to Scholastic Learning Zone (SLZ) via Selenium-controlled Chrome.
+- Manual login to a web-based reading/quiz platform via Selenium-controlled Chrome.
 - Quiz assistant that can either:
-  - Extract questions/options from the SLZ DOM (console/overlay mode), or
+  - Extract questions/options from the platform DOM (console/overlay mode), or
   - Work from OCR of pasted quiz screenshots in the Tkinter GUI.
