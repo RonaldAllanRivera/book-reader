@@ -129,7 +129,6 @@ book-reader/
       __init__.py
       tk_gui.py             # Tkinter desktop controller
   scripts/
-    run_slz_automation.py   # CLI entrypoint (ensures src/ on sys.path and calls main)
     run_gui.py              # Tkinter GUI entrypoint
 ```
 
@@ -232,23 +231,10 @@ The environment variable `SLZ_BASE_URL` overrides `slz.base_url` in `config.yaml
 From the project root with the virtual environment active:
 
 ```bash
-python scripts\run_slz_automation.py
+python scripts\run_gui.py
 ```
 
-Current flow:
-
-1. **Configuration & driver setup**
-   - Loads `.env` and `config.yaml` via `config.settings.load_config()`.
-   - Initializes Chrome WebDriver with `automation.browser.create_driver()`.
-
-2. **Login phase** (`automation.workflows.login`)
-   - Opens `SLZ_BASE_URL` (or `slz.base_url` if no env override).
-   - Asks you to log in manually in the browser window.
-   - Continues only after you press Enter in the console to confirm you are logged in.
-
-3. **Post-login: Tkinter GUI workflow (recommended)**
-
-   - After login, the recommended workflow is to use the Tkinter GUI for a **paste-screenshot + transcription + quiz assistant** workflow.
+The Tkinter GUI is the primary way to use this project. It opens the browser, coordinates screenshots, runs OCR, and calls the LLM.
 
 ### How to Run – Tkinter GUI (recommended workflow)
 

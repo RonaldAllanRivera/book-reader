@@ -8,8 +8,6 @@
     - Capture **book pages** as screenshots from the clipboard and transcribe them with local OCR (easyocr), showing a progress bar and full-page transcripts.
     - Capture **quiz questions** as screenshots from the clipboard, transcribe them with OCR, and ask an AI model for the best answer using the book transcript as context.
   - You always **manually click the answers** in the reading platform (no auto-answering).
-- **Optional CLI / overlay mode** for advanced use:
-  - Use Selenium-only flows that read directly from the browser (auto-reading overlay + DOM-based quiz extraction with in-page suggestions).
 - **Use free / low‑cost AI** where possible.
 
 ---
@@ -19,7 +17,7 @@
 - **Client machine**: Your Windows PC.
 - **Main components (Python)**:
   - **Automation layer**: Selenium (or Playwright) driving a real browser (Chrome/Edge/Firefox).
-  - **App layer**: Python application orchestrating the workflow, with a simple CLI or small GUI.
+  - **App layer**: Python application orchestrating the workflow, with a simple GUI.
   - **AI layer**: Pluggable LLM client:
     - Default: free / low-cost models via an open API provider (e.g., OpenAI-compatible but with free tier, or other providers).
     - Optional: local model (e.g., using `llama.cpp`/`ollama` or Hugging Face transformers) if you want fully free but need local compute.
@@ -70,7 +68,7 @@
 
 ### 4.1 Login & Navigation
 
-1. Start Python script: `python run_slz_automation.py` (or equivalent entrypoint).
+1. Start the Tkinter GUI: `python scripts/run_gui.py` (or equivalent entrypoint).
 2. Script steps (reading always followed by quiz assist):
    - Launch browser (Selenium WebDriver).
    - Go to the configured base URL of the reading platform.
@@ -83,7 +81,7 @@
 
 ### 4.2 Reading Automation
 
-- **Preferred (Tkinter GUI, screenshot-based):**
+- **Tkinter GUI, screenshot-based (current implementation):**
   - Open the book reader in your chosen platform manually in Chrome.
   - For each page you want to "read":
     - Use Windows Snipping Tool / Print Screen / Lightshot to capture the page (ensure it is copied to the clipboard).
@@ -94,15 +92,9 @@
     - The **full transcript per page** is logged in the GUI text area as `Transcript page N:` blocks.
   - You can click the same button again while it is running to request a graceful stop after the current page.
 
-- **Optional (CLI overlay, browser-based):**
-  - Use `auto_read_with_progress` from the console entrypoint to:
-    - Run a timed reading session while you manually change pages in the browser-based reader.
-    - Periodically capture Selenium screenshots, run OCR, and show short excerpts in a small reading overlay injected into the page.
-    - Report progress in the console and via a simple progress callback.
-
 ### 4.3 Quiz Capture & AI Suggestion
 
-- **Preferred (Tkinter GUI, screenshot-based quiz):**
+- **Tkinter GUI, screenshot-based quiz (current implementation):**
   - In Chrome, open the quiz for the book you just read.
   - For each question:
     - Capture a screenshot that includes the full question text and all options.
@@ -122,14 +114,6 @@
         - ...
         - `>>> Suggested answer (raw LLM response): ...`
     - You read the suggestion and **manually click** the chosen answer in the quiz UI.
-
-- **Optional (CLI overlay, DOM-based quiz):**
-  - From the console entrypoint, navigate to the quiz screen and call `run_quiz_assistant`:
-    - Extract the current question and options directly from the site DOM using JavaScript.
-    - Optionally include a trimmed book transcript as context.
-    - Send the question + options to the LLM with the same strict prompt.
-    - Show a short suggestion (e.g., `Q1: Suggestion -> B`) inside the browser tab via a small in-page overlay and log details to the console.
-    - Wait for you to move to the next question (and optionally stop early).
 
 - Optional future enhancement: allow you to **re-ask** the AI if you disagree with a suggestion (e.g., via a button in the GUI).
 
@@ -166,7 +150,6 @@ book-reader/
       __init__.py
       tk_gui.py        # Tkinter desktop controller for launching flows and viewing status
   scripts/
-    run_slz_automation.py  # Console/CLI entrypoint (historical name, still used)
     run_gui.py             # Entry point for the Tkinter GUI controller
 ```
 
@@ -239,13 +222,7 @@ book-reader/
        - Show suggestion in console.
        - Wait for user keystroke to move to next question.
 
-7. **CLI / Runner script**
-   - `scripts/run_slz_automation.py` (historical name):
-     - Parse CLI args / interactive menu.
-     - Initialize config, LLM client, WebDriver.
-     - Run chosen workflow.
-
-8. **Testing & Hardening**
+7. **Testing & Hardening**
    - Write small tests for text parsing & prompt formatting.
    - Add error handling and clear logs.
    - Add a `--dry-run` mode that just logs actions without clicking.
