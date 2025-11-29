@@ -294,12 +294,12 @@ For image-based books and quizzes, the Tkinter GUI provides a **paste-screenshot
      - In the GUI, click **"Paste QUIZ Screenshot"**.
      - Then click **"Transcribe Quiz Screenshot"** to run OCR on that image.
      - The GUI logs the raw quiz OCR text so you can see what was read.
+     - After OCR completes, the GUI will automatically trigger the quiz answer flow using the current book transcript as context.
 
-6. **Ask the AI to answer the quiz from the book**
+6. **Re-run or adjust the AI answer (optional)**
 
-   - With book pages already transcribed and a quiz screenshot transcribed:
-     - Click **"3. Answer Quiz from Book"**.
-   - The GUI will:
+   - At any time after OCR, you can click **"3. Answer Quiz from Book"** to manually re-run the quiz answer (for example, after updating book transcripts or to compare a different model/setting).
+   - When invoked, the GUI will:
      - Parse the OCR text into a question + options.
      - Build a book context from the transcribed book pages.
      - Call the LLM to choose the best option.

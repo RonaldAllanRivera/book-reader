@@ -467,6 +467,16 @@ class TkApp:
 
             self.root.after(0, _set_idle)
 
+            # Automatically ask the AI to answer this quiz using the current
+            # transcribed book text as context (if available).
+            if text.strip():
+                self.log(
+                    "Automatically answering quiz from book transcript after OCR.",
+                )
+                # Trigger the normal quiz flow on the main thread; it will run
+                # its work in the background as usual.
+                self.root.after(0, self.on_quiz)
+
         self._run_in_background(task)
     def _parse_quiz_text(self, text: str) -> tuple[str, list[str]]:
         lines = [line.strip() for line in (text or "").splitlines()]

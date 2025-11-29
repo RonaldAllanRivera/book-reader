@@ -108,7 +108,8 @@
     - Capture a screenshot that includes the full question text and all options.
     - With that screenshot on the clipboard, click **"Paste QUIZ Screenshot"** in the Tk GUI.
     - Click **"Transcribe Quiz Screenshot"** to run OCR and log the quiz text.
-    - Click **"3. Answer Quiz from Book"**:
+    - After OCR completes, the GUI automatically triggers the quiz answer flow using the current book transcript as context.
+    - You can also click **"3. Answer Quiz from Book"** manually to re-run the answer if needed:
       - The GUI parses the OCR text into a single question string and a list of options.
       - It builds a book context string from all transcribed book pages.
       - It sends question + options (+ optional book context) to the configured LLM with a strict reading-comprehension prompt.
