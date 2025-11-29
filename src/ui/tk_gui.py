@@ -91,6 +91,17 @@ class TkApp:
         )
         self.read_button.pack(side=LEFT, padx=4)
 
+        self.clear_book_button = Button(
+            button_frame,
+            text="Clear BOOK Screenshots",
+            command=self.on_clear_book_screenshots,
+            bg="#A5D6A7",
+            fg="black",
+            activebackground="#81C784",
+            activeforeground="black",
+        )
+        self.clear_book_button.pack(side=LEFT, padx=4)
+
         self.paste_quiz_button = Button(
             button_frame,
             text="Paste QUIZ Screenshot (Ctrl+Q)",
@@ -207,6 +218,62 @@ class TkApp:
         self._last_image_tk = ImageTk.PhotoImage(display)
         self.image_label.configure(image=self._last_image_tk, text="")
 
+    def _rebuild_thumbnails(self) -> None:
+        for widget in self.thumb_frame.winfo_children():
+            widget.destroy()
+        self.thumb_images.clear()
+
+        for index, image in enumerate(self.page_images, start=1):
+            thumb = image.copy()
+            thumb.thumbnail((96, 96), Image.LANCZOS)
+            thumb_tk = ImageTk.PhotoImage(thumb)
+            self.thumb_images.append(thumb_tk)
+
+            container = Frame(self.thumb_frame)
+            container.pack(side=LEFT, padx=2, pady=2)
+
+            lbl = Label(container, image=thumb_tk)
+            lbl.pack(side="top")
+
+            delete_btn = Button(
+                container,
+                text="X",
+                command=lambda idx=index - 1: self._delete_book_screenshots(idx),
+                bg="#C62828",
+                fg="white",
+                activebackground="#B71C1C",
+                activeforeground="white",
+                padx=2,
+                pady=0,
+            )
+            delete_btn.pack(side="top", fill="x")
+
+    def _delete_book_screenshots(self, index: int) -> None:
+        if index < 0 or index >= len(self.page_images):
+            return
+
+        self.page_images.pop(index)
+
+        if self.page_texts:
+            self.page_texts.clear()
+            self.log(
+                "Cleared existing book transcripts because a page screenshot was deleted. "
+                "Please re-run book transcription.",
+            )
+
+        self._rebuild_thumbnails()
+
+        if self.page_images:
+            self._show_last_image(self.page_images[-1])
+            self.log(
+                f"Deleted a BOOK page screenshot. {len(self.page_images)} remaining.",
+            )
+        else:
+            self._last_image_tk = None
+            self.image_label.configure(image="", text="No screenshots pasted yet.")
+            self._set_progress(0.0)
+            self.log("Deleted the last BOOK page screenshot; none remain.")
+
     def _grab_image_from_clipboard(self) -> Image.Image | None:
         try:
             data = ImageGrab.grabclipboard()
@@ -248,12 +315,32 @@ class TkApp:
 
         # Also add a small thumbnail to the thumbnail strip so all pasted
         # screenshots are visible in the UI.
-        thumb = image.copy()
-        thumb.thumbnail((96, 96), Image.LANCZOS)
-        thumb_tk = ImageTk.PhotoImage(thumb)
-        self.thumb_images.append(thumb_tk)
-        lbl = Label(self.thumb_frame, image=thumb_tk)
-        lbl.pack(side=LEFT, padx=2, pady=2)
+        self._rebuild_thumbnails()
+
+    def on_clear_book_screenshots(self) -> None:
+        if self._book_transcribing:
+            self.log(
+                "Cannot clear book screenshots while transcription is running. "
+                "Please stop transcription first.",
+            )
+            return
+
+        count = len(self.page_images)
+        if not count:
+            self.log("No book screenshots to clear.")
+            return
+
+        self.page_images.clear()
+        self.page_texts.clear()
+        self.thumb_images.clear()
+
+        for widget in self.thumb_frame.winfo_children():
+            widget.destroy()
+
+        self._last_image_tk = None
+        self.image_label.configure(image="", text="No screenshots pasted yet.")
+        self._set_progress(0.0)
+        self.log(f"Cleared {count} BOOK screenshots and any associated transcripts.")
 
     def on_paste_quiz_screenshot(self) -> None:
         image = self._grab_image_from_clipboard()
