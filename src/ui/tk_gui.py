@@ -82,7 +82,7 @@ class TkApp:
 
         self.read_button = Button(
             button_frame,
-            text="2. Transcribe Book Screenshots",
+            text="2. Transcribe Book Screenshots (Ctrl+N)",
             command=self.on_read,
             bg="#2E7D32",
             fg="white",
@@ -115,7 +115,7 @@ class TkApp:
 
         self.transcribe_quiz_button = Button(
             button_frame,
-            text="Transcribe Quiz Screenshot",
+            text="Transcribe Quiz Screenshot (Ctrl+W)",
             command=self.on_transcribe_quiz,
             bg="#6A1B9A",
             fg="white",
@@ -191,6 +191,8 @@ class TkApp:
     def _bind_shortcuts(self) -> None:
         self.root.bind_all("<Control-b>", lambda event: self.on_paste_screenshot())
         self.root.bind_all("<Control-q>", lambda event: self.on_paste_quiz_screenshot())
+        self.root.bind_all("<Control-n>", lambda event: self.on_read())
+        self.root.bind_all("<Control-w>", lambda event: self.on_transcribe_quiz())
 
     def _append_log(self, message: str, tag: str) -> None:
         self.log_text.configure(state="normal")
