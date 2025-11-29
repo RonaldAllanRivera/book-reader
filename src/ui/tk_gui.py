@@ -71,7 +71,7 @@ class TkApp:
 
         self.paste_button = Button(
             button_frame,
-            text="Paste BOOK Screenshot",
+            text="Paste BOOK Screenshot (Ctrl+B)",
             command=self.on_paste_screenshot,
             bg="#2E7D32",
             fg="white",
@@ -93,7 +93,7 @@ class TkApp:
 
         self.paste_quiz_button = Button(
             button_frame,
-            text="Paste QUIZ Screenshot",
+            text="Paste QUIZ Screenshot (Ctrl+Q)",
             command=self.on_paste_quiz_screenshot,
             bg="#6A1B9A",
             fg="white",
@@ -174,6 +174,12 @@ class TkApp:
         self.log_text.tag_config("log_book", foreground="#1B5E20")
         self.log_text.tag_config("log_quiz", foreground="#4A148C")
         self.log_text.tag_config("log_error", foreground="#B71C1C")
+
+        self._bind_shortcuts()
+
+    def _bind_shortcuts(self) -> None:
+        self.root.bind_all("<Control-b>", lambda event: self.on_paste_screenshot())
+        self.root.bind_all("<Control-q>", lambda event: self.on_paste_quiz_screenshot())
 
     def _append_log(self, message: str, tag: str) -> None:
         self.log_text.configure(state="normal")
