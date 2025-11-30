@@ -1,12 +1,18 @@
 import logging
 import threading
 import re
+import os
+import time
 from tkinter import BOTH, END, LEFT, RIGHT, Y, Button, Frame, Label, Scrollbar, Text, Tk, DoubleVar
 from tkinter import ttk
 
 import numpy as np
 from PIL import Image, ImageGrab, ImageTk
 from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 
 from automation.browser import create_driver
 from automation.workflows import (
@@ -68,6 +74,17 @@ class TkApp:
             activeforeground="white",
         )
         self.fill_login_button.pack(side=LEFT, padx=4)
+
+        self.lexile_button = Button(
+            button_frame,
+            text="Lexile Levels",
+            command=self.on_set_lexile_levels,
+            bg="#1976D2",
+            fg="white",
+            activebackground="#1565C0",
+            activeforeground="white",
+        )
+        self.lexile_button.pack(side=LEFT, padx=4)
 
         self.paste_button = Button(
             button_frame,
@@ -422,6 +439,128 @@ class TkApp:
             )
             assert self.driver is not None
             fill_login_form(self.driver, self.config)
+
+        self._run_in_background(task)
+
+    def on_set_lexile_levels(self) -> None:
+        def task() -> None:
+            if self.driver is None:
+                self.log("Browser is not running yet. Use 'Launch SLZ / Login' first.")
+                return
+
+            lexile_from = os.getenv("LEXILE_FROM", "").strip()
+            lexile_to = os.getenv("LEXILE_TO", "").strip()
+
+            if not lexile_from or not lexile_to:
+                self.log(
+                    "LEXILE_FROM and LEXILE_TO are not configured; cannot fill Lexile Level fields.",
+                )
+                return
+
+            assert self.driver is not None
+
+            try:
+                handles = self.driver.window_handles
+                if handles:
+                    self.driver.switch_to.window(handles[-1])
+            except Exception:  # noqa: BLE001
+                pass
+
+            script = """
+return (function(fromVal, toVal) {
+  function setVal(selector, value) {
+    var el = document.querySelector(selector);
+    if (!el) { return false; }
+    try { el.focus(); } catch (e) {}
+    try {
+      var desc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
+      if (desc && desc.set) {
+        desc.set.call(el, value);
+      } else {
+        el.value = value;
+      }
+    } catch (e) {
+      el.value = value;
+    }
+    try {
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    } catch (e) {}
+    return true;
+  }
+
+  var fromSelectors = "input[name='lexileStart'], input[id='exampleInputEmail1']";
+  var toSelectors = "input[name='lexileEnd'], input[id='exampleInputPassword1']";
+
+  var okFrom = setVal(fromSelectors, fromVal);
+  var okTo = setVal(toSelectors, toVal);
+
+  return { okFrom: okFrom, okTo: okTo };
+})(arguments[0], arguments[1]);
+"""
+
+            deadline = time.time() + 10.0
+            success = False
+            last_error: Exception | None = None
+
+            while time.time() < deadline and not success:
+                try:
+                    self.driver.switch_to.default_content()
+
+                    try:
+                        result = self.driver.execute_script(script, lexile_from, lexile_to)
+                    except Exception as exc:  # noqa: BLE001
+                        last_error = exc
+                        result = None
+
+                    ok_from = bool(result and result.get("okFrom"))
+                    ok_to = bool(result and result.get("okTo"))
+
+                    if ok_from and ok_to:
+                        success = True
+                    else:
+                        frames = self.driver.find_elements(By.TAG_NAME, "iframe")
+                        for frame in frames:
+                            try:
+                                self.driver.switch_to.default_content()
+                                self.driver.switch_to.frame(frame)
+                                result = self.driver.execute_script(
+                                    script,
+                                    lexile_from,
+                                    lexile_to,
+                                )
+                                ok_from = bool(result and result.get("okFrom"))
+                                ok_to = bool(result and result.get("okTo"))
+                                if ok_from and ok_to:
+                                    success = True
+                                    break
+                            except Exception as exc:  # noqa: BLE001
+                                last_error = exc
+
+                    if not success:
+                        time.sleep(0.5)
+                except Exception as exc:  # noqa: BLE001
+                    last_error = exc
+                    time.sleep(0.5)
+
+            try:
+                self.driver.switch_to.default_content()
+            except Exception:  # noqa: BLE001
+                pass
+
+            if success:
+                self.log(
+                    f"Filled Lexile Level fields with LEXILE_FROM={lexile_from} and LEXILE_TO={lexile_to}.",
+                )
+            else:
+                if last_error is not None:
+                    self.log(
+                        f"Could not locate Lexile Level inputs on the current page (even after checking iframes): {last_error}",
+                    )
+                else:
+                    self.log(
+                        "Could not locate Lexile Level inputs on the current page (selectors did not match any inputs).",
+                    )
 
         self._run_in_background(task)
 

@@ -18,6 +18,10 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0
    - `Transcribe Quiz Screenshot` button to run OCR over the quiz image and log the raw OCR text.
    - `3. Answer Quiz from Book` button to parse the OCR text into question + options, combine it with the transcribed book text, and call the LLM for a suggested answer.
    - Clear quiz result blocks in the GUI log showing the question, options, and which option the AI chose.
+ - Convenience controls in the Tkinter GUI:
+   - `Lexile Levels` button that reads `LEXILE_FROM` and `LEXILE_TO` from the environment and fills the platform's Lexile Level **From/To** inputs via Selenium/JavaScript.
+   - Keyboard shortcuts: `Ctrl+B`/`Ctrl+Q` for pasting book/quiz screenshots and `Ctrl+N`/`Ctrl+W` for transcribing book/quiz screenshots.
+   - `Clear BOOK Screenshots` button and per-thumbnail `X` buttons to remove individual book page screenshots and keep transcripts in sync.
 
 ### Changed
 - Tkinter GUI reading flow:

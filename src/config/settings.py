@@ -42,7 +42,13 @@ def _load_raw_config() -> Dict[str, Any]:
     base_dir = Path(__file__).resolve().parents[2]
     config_path = base_dir / "config.yaml"
     if not config_path.exists():
-        raise FileNotFoundError(f"config.yaml not found at {config_path}")
+        alt_path = Path.cwd() / "config.yaml"
+        if alt_path.exists():
+            config_path = alt_path
+        else:
+            raise FileNotFoundError(
+                f"config.yaml not found at {config_path} or {alt_path}",
+            )
     with config_path.open("r", encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
     return data

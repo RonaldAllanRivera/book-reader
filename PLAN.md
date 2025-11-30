@@ -75,6 +75,7 @@
    - Locate username/password fields and login button.
    - Submit and wait for landing page.
    - Navigate to the selected program / classroom / bookshelf.
+   - Optionally use the GUI **"Lexile Levels"** button (configured via `LEXILE_FROM`/`LEXILE_TO` in `.env`) to pre-fill the Lexile Level **From/To** filters on the Library page before choosing a book.
    - Choose book by:
      - Title match (preferred)
      - Or first/Nth book if title selectors are hard.

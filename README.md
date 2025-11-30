@@ -58,6 +58,9 @@ At a high level, this tool:
   - Quiz results (question, options, and which option the AI chose) are logged clearly in the GUI so you can manually click the best choice in the quiz UI.
   - Chrome remains a normal external window; Tkinter is only the control panel.
 
+- **Lexile level helper**
+  - Optional **"Lexile Levels"** button in the Tkinter GUI that fills the platform's **Lexile Level From/To** inputs using `LEXILE_FROM` and `LEXILE_TO` from your `.env`.
+
 - **User experience focus**
   - Reading phase (GUI) shows a **progress bar** for batch OCR of pasted book pages and logs full-page transcripts.
   - Quiz suggestions are shown in a clear text block in the Tkinter GUI log, highlighting the option the AI chose.
@@ -195,11 +198,14 @@ copy .env.example .env
    ```env
    OPENAI_API_KEY=sk-...your_real_key...
    SLZ_BASE_URL=https://your-reading-platform.example.com/login
+   LEXILE_FROM=600
+   LEXILE_TO=700
    ```
 
    Notes:
    - `OPENAI_API_KEY` is required for the LLM quiz assistance.
    - `SLZ_BASE_URL` should be the exact login URL you normally use for your reading platform.
+   - `LEXILE_FROM` and `LEXILE_TO` are optional and configure the default Lexile range used when you click **"Lexile Levels"** in the GUI.
 
 ### 5. Adjust config (optional)
 
@@ -305,6 +311,35 @@ For image-based books and quizzes, the Tkinter GUI provides a **paste-screenshot
        ```
 
    - You then manually click the suggested answer in the quiz UI.
+
+---
+
+## Build a Windows .exe (optional)
+
+If you want to distribute this tool as a standalone Windows executable for the Tkinter GUI, you can use **PyInstaller**.
+
+From the project root with the virtual environment active:
+
+```bash
+pip install pyinstaller
+
+pyinstaller --onefile --noconsole --name book-reader-gui scripts\run_gui.py
+```
+
+This produces `dist\book-reader-gui.exe`.
+
+To run the executable successfully, make sure that:
+
+- A copy of `config.yaml` is available in the **same folder** as `book-reader-gui.exe`, or in the original project root.
+- A copy of your `.env` file (with `OPENAI_API_KEY`, `SLZ_BASE_URL`, etc.) is available in the same folder as the executable (or in a parent directory where `python-dotenv` can find it).
+
+Then you can double-click `book-reader-gui.exe` in Explorer, or run it from a terminal:
+
+```bash
+dist\book-reader-gui.exe
+```
+
+The behavior of the GUI is the same as when running `python scripts\run_gui.py`.
 
 ---
 
