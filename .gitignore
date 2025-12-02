@@ -36,6 +36,7 @@ Thumbs.db
 build/
 dist/
 *.spec
+*.exe
 
 # Coverage / test
 htmlcov/

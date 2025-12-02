@@ -323,7 +323,7 @@ From the project root with the virtual environment active:
 ```bash
 pip install pyinstaller
 
-pyinstaller --onefile --noconsole --name book-reader-gui scripts\run_gui.py
+pyinstaller --onefile --noconsole --icon book.ico --paths src --name book-reader-gui scripts\run_gui.py
 ```
 
 This produces `dist\book-reader-gui.exe`.
@@ -332,6 +332,7 @@ To run the executable successfully, make sure that:
 
 - A copy of `config.yaml` is available in the **same folder** as `book-reader-gui.exe`, or in the original project root.
 - A copy of your `.env` file (with `OPENAI_API_KEY`, `SLZ_BASE_URL`, etc.) is available in the same folder as the executable (or in a parent directory where `python-dotenv` can find it).
+  - A `book.ico` icon file (for the book icon) is present in the project root when you run PyInstaller, so `--icon book.ico` can be resolved.
 
 Then you can double-click `book-reader-gui.exe` in Explorer, or run it from a terminal:
 
