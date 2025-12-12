@@ -30,8 +30,14 @@ At a high level, this tool:
 ## Features
 
 - **Chrome browser automation (Selenium)**
-  - Uses `webdriver-manager` to download and manage the correct ChromeDriver.
+  - Supports multiple driver backends via a **Driver** dropdown in the Tkinter GUI.
   - Supports headless and non-headless modes via config.
+  - Driver modes:
+    - **Auto** (recommended)
+    - **Snap Chromium** (Ubuntu-friendly fallback)
+    - **Selenium Manager** (cross-platform)
+    - **WebDriverManager** (downloads a matching driver)
+    - **Custom (env paths)** (`CHROMEDRIVER_PATH` + optional `CHROME_BINARY`)
 
 - **Manual, explicit login flow**
   - Reads `SLZ_BASE_URL` (deep login URL for your reading platform) from environment or `config.yaml`.
@@ -141,7 +147,7 @@ The design deliberately keeps **site-specific selectors** and **LLM wiring** in 
 
 ## Prerequisites
 
-- **Operating system**: Windows (tested) – other platforms may work with minor adjustments.
+- **Operating system**: Windows or Linux (Ubuntu supported).
 - **Python**: 3.11+ recommended.
 - **Browser**: Google Chrome installed and up-to-date.
 - **Accounts**:
@@ -163,8 +169,15 @@ cd book-reader
 
 ```bash
 python -m venv .venv
+
+# Linux / macOS:
+source .venv/bin/activate
+
+# Windows (cmd.exe):
 .\.venv\Scripts\activate
-# On PowerShell, you might use: .venv\Scripts\Activate.ps1
+
+# Windows (PowerShell):
+.venv\Scripts\Activate.ps1
 ```
 
 ### 3. Install dependencies
@@ -237,7 +250,8 @@ The environment variable `SLZ_BASE_URL` overrides `slz.base_url` in `config.yaml
 From the project root with the virtual environment active:
 
 ```bash
-python scripts\run_gui.py
+source .venv/bin/activate
+python scripts/run_gui.py
 ```
 
 The Tkinter GUI is the primary way to use this project. It opens the browser, coordinates screenshots, runs OCR, and calls the LLM.
@@ -249,15 +263,22 @@ For image-based books and quizzes, the Tkinter GUI provides a **paste-screenshot
 1. **Start the GUI**
 
    ```bash
-   python scripts\run_gui.py
+   source .venv/bin/activate
+   python scripts/run_gui.py
    ```
 
-2. **Launch the reading site and log in**
+2. **Choose a driver mode**
+
+   - Use the **Driver** dropdown at the bottom of the GUI.
+   - Recommended default: **Auto**.
+   - On Ubuntu, if system Chrome/driver matching is tricky, **Auto** will select a compatible backend.
+
+3. **Launch the reading site and log in**
 
    - In the GUI, click **"1. Launch SLZ / Login"** to open the configured login page in Chrome.
    - Optionally click **"Fill Login Form"** to auto-fill username/password from your `.env`, then click the Login button manually in Chrome.
 
-3. **Capture book page screenshots**
+4. **Capture book page screenshots**
 
    - Navigate to the book reading view in Chrome.
    - For each page you want to "read":
@@ -268,7 +289,7 @@ For image-based books and quizzes, the Tkinter GUI provides a **paste-screenshot
        - Store the image in a page list.
        - Show a preview of the latest page and a thumbnail for each pasted screenshot.
 
-4. **Batch-transcribe all pasted book pages**
+5. **Batch-transcribe all pasted book pages**
 
    - After pasting all pages (e.g., 10–50 screenshots), click **"2. Transcribe Book Screenshots"**.
    - The GUI will:
@@ -277,7 +298,7 @@ For image-based books and quizzes, the Tkinter GUI provides a **paste-screenshot
      - Log the **full transcription per page** in the text area, prefixed with `Transcript page N:`.
    - While transcription is running, clicking the same button again requests a graceful stop after the current page.
 
-5. **Transcribe quiz questions from screenshots**
+6. **Transcribe quiz questions from screenshots**
 
    - In Chrome, navigate to the quiz for the same book.
    - For each question:
@@ -288,7 +309,7 @@ For image-based books and quizzes, the Tkinter GUI provides a **paste-screenshot
      - The GUI logs the raw quiz OCR text so you can see what was read.
      - After OCR completes, the GUI will automatically trigger the quiz answer flow using the current book transcript as context.
 
-6. **Re-run or adjust the AI answer (optional)**
+7. **Re-run or adjust the AI answer (optional)**
 
    - At any time after OCR, you can click **"3. Answer Quiz from Book"** to manually re-run the quiz answer (for example, after updating book transcripts or to compare a different model/setting).
    - When invoked, the GUI will:

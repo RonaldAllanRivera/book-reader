@@ -22,6 +22,11 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0
    - `Lexile Levels` button that reads `LEXILE_FROM` and `LEXILE_TO` from the environment and fills the platform's Lexile Level **From/To** inputs via Selenium/JavaScript.
    - Keyboard shortcuts: `Ctrl+B`/`Ctrl+Q` for pasting book/quiz screenshots and `Ctrl+N`/`Ctrl+W` for transcribing book/quiz screenshots.
    - `Clear BOOK Screenshots` button and per-thumbnail `X` buttons to remove individual book page screenshots and keep transcripts in sync.
+ - Browser driver selection in the Tkinter GUI:
+   - Driver dropdown with support for **Auto**, **Snap Chromium**, **Selenium Manager**, **WebDriverManager**, and **Custom (env paths)**.
+   - Improved Ubuntu compatibility by detecting snap-wrapper `chromedriver` and using the snap-installed Chromium binary when needed.
+   - Additional driver startup logging (including full tracebacks in the GUI log on failures).
+ - Improved error and traceback logging in the GUI.
 
 ### Changed
 - Tkinter GUI reading flow:

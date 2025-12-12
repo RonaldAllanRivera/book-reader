@@ -1,0 +1,32 @@
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Python envs
+.venv/
+venv/
+
+# Distribution / build artifacts
+dist/
+build/
+*.egg-info/
+
+# Git & IDE
+.git/
+.gitignore
+.idea/
+.vscode/
+
+# Environment / secrets
+.env
+.env.*
+
+# Misc
+*.sqlite3
+*.db
+

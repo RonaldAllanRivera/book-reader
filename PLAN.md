@@ -14,7 +14,7 @@
 
 ## 2. High-Level Architecture
 
-- **Client machine**: Your Windows PC.
+- **Client machine**: Windows or Linux (Ubuntu supported).
 - **Main components (Python)**:
   - **Automation layer**: Selenium (or Playwright) driving a real browser (Chrome/Edge/Firefox).
   - **App layer**: Python application orchestrating the workflow, with a simple GUI.
@@ -30,8 +30,9 @@
 - **Preferred**: Playwright for Python
   - Pros: modern, resilient selectors, auto-wait, good for complex SPAs, better for handling dynamic pages.
   - Cons: Heavier initial setup; needs browser binaries.
-- **Alternative**: Selenium with webdriver-manager
-  - Easier mental model; many examples.
+- **Alternative**: Selenium with selectable driver backends
+  - Cross-platform driver provisioning differs across OS and packaging.
+  - The Tkinter GUI supports selecting a driver mode at runtime (recommended: **Auto**).
 
 **Plan**: Start with **Selenium** (common, simple) and keep abstraction so we could swap to Playwright later.
 

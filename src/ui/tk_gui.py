@@ -3,7 +3,8 @@ import threading
 import re
 import os
 import time
-from tkinter import BOTH, END, LEFT, RIGHT, Y, Button, Frame, Label, Scrollbar, Text, Tk, DoubleVar
+import traceback
+from tkinter import BOTH, END, LEFT, RIGHT, Y, Button, Frame, Label, Scrollbar, Text, Tk, DoubleVar, StringVar
 from tkinter import ttk
 
 import numpy as np
@@ -33,6 +34,16 @@ class TkApp:
         self._stop_reading: bool = False
         self._book_transcribing: bool = False
         self.progress_var = DoubleVar(value=0.0)
+        self.driver_mode_choices: list[tuple[str, str]] = [
+            ("Auto", "auto"),
+            ("Snap Chromium", "snap"),
+            ("Selenium Manager", "selenium-manager"),
+            ("WebDriverManager", "webdriver-manager"),
+            ("Custom (env paths)", "custom"),
+        ]
+        self.driver_mode_labels = [label for label, _ in self.driver_mode_choices]
+        self.driver_mode_map = {label: mode for label, mode in self.driver_mode_choices}
+        self.driver_mode_var = StringVar(value=self.driver_mode_labels[0])
         self.page_images: list[Image.Image] = []
         self.page_texts: list[str] = []
         self.quiz_image: Image.Image | None = None
@@ -165,6 +176,19 @@ class TkApp:
 
         self.status_label = Label(self.root, text="Ready.", anchor="w")
         self.status_label.pack(fill="x", padx=8)
+
+        driver_frame = Frame(self.root)
+        driver_frame.pack(fill="x", padx=8, pady=(0, 4))
+
+        Label(driver_frame, text="Driver:").pack(side=LEFT)
+        self.driver_mode_combo = ttk.Combobox(
+            driver_frame,
+            textvariable=self.driver_mode_var,
+            values=self.driver_mode_labels,
+            state="readonly",
+            width=22,
+        )
+        self.driver_mode_combo.pack(side=LEFT, padx=(8, 0))
 
         progress_frame = Frame(self.root)
         progress_frame.pack(fill="x", padx=8, pady=(0, 4))
@@ -407,6 +431,7 @@ class TkApp:
                 func()
             except Exception as exc:  # noqa: BLE001
                 self.log(f"Error: {exc}")
+                self.log(traceback.format_exc())
 
         thread = threading.Thread(target=_wrapper, daemon=True)
         thread.start()
@@ -415,7 +440,10 @@ class TkApp:
         def task() -> None:
             if self.driver is None:
                 self.log("Initializing Chrome WebDriver...")
-                self.driver = create_driver(self.config.automation)
+                selected = (self.driver_mode_var.get() or "Auto").strip()
+                mode = self.driver_mode_map.get(selected, "auto")
+                self.log(f"Driver mode: {selected}")
+                self.driver = create_driver(self.config.automation, driver_mode=mode)
                 self.log("Chrome WebDriver initialized.")
 
             self.log(f"Opening SLZ at {self.config.slz.base_url}")

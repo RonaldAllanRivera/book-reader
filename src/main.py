@@ -15,7 +15,7 @@ def main() -> None:
     config = load_config()
     logging.info("Configuration loaded successfully.")
 
-    driver = create_driver(config.automation)
+    driver = create_driver(config.automation, driver_mode=None)
     logging.info("Chrome WebDriver initialized.")
 
     try:
