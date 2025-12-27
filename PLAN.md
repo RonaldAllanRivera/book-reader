@@ -107,6 +107,12 @@
     - With that screenshot on the clipboard, click **"Paste QUIZ Screenshot"** in the Tk GUI.
     - Click **"Transcribe Quiz Screenshot"** to run OCR and log the quiz text.
     - After OCR completes, the GUI automatically triggers the quiz answer flow using the current book transcript as context.
+    - On Ubuntu, you can optionally enable **"Enable Easy Screenshot for Quiz"** (below the Driver dropdown) so that `PrtSc` + `Ctrl+C` automatically:
+      - pastes the clipboard image as the quiz screenshot
+      - runs quiz OCR
+      - triggers the quiz answer flow
+    - The Book and Quiz easy-screenshot modes are mutually exclusive to avoid clipboard routing conflicts.
+    - If a new quiz screenshot arrives while quiz OCR is running, it is queued and processed after the current OCR completes.
     - You can also click **"3. Answer Quiz from Book"** manually to re-run the answer if needed:
       - The GUI parses the OCR text into a single question string and a list of options.
       - It builds a book context string from all transcribed book pages.

@@ -61,6 +61,8 @@ At a high level, this tool:
   - Small GUI window to launch the reading site, manage **book** and **quiz** screenshots, and call the quiz assistant.
   - Supports a **screenshot-based reading workflow**: paste page screenshots from the clipboard, see thumbnails for all pages, and batch-transcribe them with local OCR.
   - Optional **"Enable Easy Screenshot for Book"** checkbox (Ubuntu): when enabled, the GUI watches the clipboard and automatically appends new clipboard images as book page screenshots after you take a screenshot and copy it (e.g., `PrtSc` then `Ctrl+C`). Note that this feature requires the clipboard to contain an image and may not work with all screenshot tools, especially on Wayland.
+  - Optional **"Enable Easy Screenshot for Quiz"** checkbox (Ubuntu): when enabled, the GUI watches the clipboard and automatically pastes new clipboard images as the quiz screenshot, runs quiz OCR, and triggers the quiz answer flow.
+    - The Book and Quiz easy-screenshot modes are mutually exclusive to avoid clipboard routing conflicts.
   - Supports a **screenshot-based quiz workflow**: paste quiz screenshots from the clipboard, transcribe them with OCR, and send question + options (plus optional book context) to the LLM.
   - Quiz results (question, options, and which option the AI chose) are logged clearly in the GUI so you can manually click the best choice in the quiz UI.
   - Chrome remains a normal external window; Tkinter is only the control panel.
@@ -299,6 +301,16 @@ For image-based books and quizzes, the Tkinter GUI provides a **paste-screenshot
    - Notes:
      - This only works when your screenshot tool puts an **image** into the clipboard.
      - On Wayland, some screenshot tools behave differently. If `PrtSc` + `Ctrl+C` does not produce a clipboard image, use a tool that supports *Copy to clipboard* (e.g., Flameshot).
+
+   **Ubuntu shortcut (optional): Easy Screenshot for Quiz**
+
+   - Enable the checkbox **"Enable Easy Screenshot for Quiz"** (below the Driver dropdown).
+   - This mode is **mutually exclusive** with Easy Screenshot for Book (enabling one disables the other).
+   - For each quiz question, take a screenshot (example: `PrtSc`) and copy it to the clipboard (`Ctrl+C`).
+   - The GUI will automatically:
+     - paste the clipboard image as the **QUIZ** screenshot
+     - run quiz OCR
+     - trigger the quiz answer flow (same behavior as clicking **"Transcribe Quiz Screenshot"**)
 
 5. **Batch-transcribe all pasted book pages**
 

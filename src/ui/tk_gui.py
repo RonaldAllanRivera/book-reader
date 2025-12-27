@@ -62,10 +62,17 @@ class TkApp:
         self.driver_mode_labels = [label for label, _ in self.driver_mode_choices]
         self.driver_mode_map = {label: mode for label, mode in self.driver_mode_choices}
         self.driver_mode_var = StringVar(value=self.driver_mode_labels[0])
-        self.easy_book_screenshot_var = BooleanVar(value=False)
+        self.easy_book_screenshot_var = BooleanVar(value=True)
+        self.easy_quiz_screenshot_var = BooleanVar(value=False)
         self._easy_book_clipboard_job: str | None = None
         self._easy_book_clipboard_seen: deque[str] = deque(maxlen=200)
         self._easy_book_clipboard_last_sig: str | None = None
+        self._easy_quiz_clipboard_job: str | None = None
+        self._easy_quiz_clipboard_seen: deque[str] = deque(maxlen=200)
+        self._easy_quiz_clipboard_last_sig: str | None = None
+        self._quiz_transcribing: bool = False
+        self._pending_quiz_image: Image.Image | None = None
+        self._pending_quiz_sig: str | None = None
         self.page_images: list[Image.Image] = []
         self.page_texts: list[str] = []
         self.quiz_image: Image.Image | None = None
@@ -75,6 +82,9 @@ class TkApp:
 
         self._setup_logging()
         self._build_ui()
+
+        if self.easy_book_screenshot_var.get():
+            self.root.after(0, self.on_toggle_easy_book_screenshot)
 
     def _setup_logging(self) -> None:
         logging.basicConfig(
@@ -233,6 +243,14 @@ class TkApp:
             command=self.on_toggle_easy_book_screenshot,
         )
         self.easy_book_screenshot_check.pack(side=LEFT)
+
+        self.easy_quiz_screenshot_check = Checkbutton(
+            easy_frame,
+            text="Enable Easy Screenshot for Quiz",
+            variable=self.easy_quiz_screenshot_var,
+            command=self.on_toggle_easy_quiz_screenshot,
+        )
+        self.easy_quiz_screenshot_check.pack(side=LEFT, padx=(12, 0))
 
         progress_frame = Frame(self.root)
         progress_frame.pack(fill="x", padx=8, pady=(0, 4))
@@ -405,11 +423,25 @@ class TkApp:
 
     def on_toggle_easy_book_screenshot(self) -> None:
         if self.easy_book_screenshot_var.get():
+            if self.easy_quiz_screenshot_var.get():
+                self.easy_quiz_screenshot_var.set(False)
+                self._stop_easy_quiz_clipboard_watcher()
             self._start_easy_book_clipboard_watcher()
             self.log("Easy Book Screenshot enabled (clipboard watcher running).")
         else:
             self._stop_easy_book_clipboard_watcher()
             self.log("Easy Book Screenshot disabled.")
+
+    def on_toggle_easy_quiz_screenshot(self) -> None:
+        if self.easy_quiz_screenshot_var.get():
+            if self.easy_book_screenshot_var.get():
+                self.easy_book_screenshot_var.set(False)
+                self._stop_easy_book_clipboard_watcher()
+            self._start_easy_quiz_clipboard_watcher()
+            self.log("Easy Quiz Screenshot enabled (clipboard watcher running).")
+        else:
+            self._stop_easy_quiz_clipboard_watcher()
+            self.log("Easy Quiz Screenshot disabled.")
 
     def _start_easy_book_clipboard_watcher(self) -> None:
         if self._easy_book_clipboard_job is not None:
@@ -426,6 +458,82 @@ class TkApp:
             self.root.after_cancel(job)
         except Exception:  # noqa: BLE001
             pass
+
+    def _start_easy_quiz_clipboard_watcher(self) -> None:
+        if self._easy_quiz_clipboard_job is not None:
+            return
+        self._easy_quiz_clipboard_last_sig = None
+        self._pending_quiz_image = None
+        self._pending_quiz_sig = None
+        self._poll_easy_quiz_clipboard()
+
+    def _stop_easy_quiz_clipboard_watcher(self) -> None:
+        job = self._easy_quiz_clipboard_job
+        self._easy_quiz_clipboard_job = None
+        if job is None:
+            return
+        try:
+            self.root.after_cancel(job)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _maybe_process_pending_quiz(self) -> None:
+        if self._quiz_transcribing:
+            return
+        if not self.easy_quiz_screenshot_var.get():
+            self._pending_quiz_image = None
+            self._pending_quiz_sig = None
+            return
+        if self._pending_quiz_image is None:
+            return
+
+        image = self._pending_quiz_image
+        sig = self._pending_quiz_sig
+        self._pending_quiz_image = None
+        self._pending_quiz_sig = None
+
+        if image is None:
+            return
+
+        self.quiz_image = image
+        self._show_last_image(image)
+        if sig is not None:
+            self._easy_quiz_clipboard_last_sig = sig
+            self._easy_quiz_clipboard_seen.append(sig)
+
+        self.log(
+            f"Pasted QUIZ screenshot from clipboard (easy mode) ({image.width}x{image.height}).",
+        )
+        self.on_transcribe_quiz()
+
+    def _poll_easy_quiz_clipboard(self) -> None:
+        if not self.easy_quiz_screenshot_var.get():
+            self._easy_quiz_clipboard_job = None
+            return
+
+        try:
+            image = self._grab_image_from_clipboard(silent=True)
+            if image is not None:
+                sig = self._image_signature(image)
+                if sig != self._easy_quiz_clipboard_last_sig and sig not in self._easy_quiz_clipboard_seen:
+                    if self._quiz_transcribing:
+                        if self._pending_quiz_sig != sig:
+                            self._pending_quiz_image = image
+                            self._pending_quiz_sig = sig
+                            self.log(
+                                "Queued QUIZ screenshot from clipboard (easy mode); will process after current OCR completes.",
+                            )
+                    else:
+                        self._easy_quiz_clipboard_last_sig = sig
+                        self._easy_quiz_clipboard_seen.append(sig)
+                        self.quiz_image = image
+                        self._show_last_image(image)
+                        self.log(
+                            f"Pasted QUIZ screenshot from clipboard (easy mode) ({image.width}x{image.height}).",
+                        )
+                        self.root.after(0, self.on_transcribe_quiz)
+        finally:
+            self._easy_quiz_clipboard_job = self.root.after(350, self._poll_easy_quiz_clipboard)
 
     def _poll_easy_book_clipboard(self) -> None:
         if not self.easy_book_screenshot_var.get():
@@ -822,11 +930,16 @@ return (function(fromVal, toVal) {
 
     def on_transcribe_quiz(self) -> None:
         def task() -> None:
+            if self._quiz_transcribing:
+                self.log("Quiz transcription is already running.")
+                return
             if self.quiz_image is None:
                 self.log(
                     "No quiz screenshot has been pasted yet. Use 'Paste QUIZ Screenshot' first.",
                 )
                 return
+
+            self._quiz_transcribing = True
 
             def _set_busy() -> None:
                 self.transcribe_quiz_button.configure(
@@ -840,50 +953,51 @@ return (function(fromVal, toVal) {
                     state="normal",
                 )
 
-            self.root.after(0, _set_busy)
-
-            self.log("Starting OCR transcription for QUIZ screenshot.")
-            reader = _get_ocr_reader()
-            if reader is None:
-                self.log("OCR is not available (easyocr failed to initialize).")
-                self.root.after(0, _set_idle)
-                return
-
             try:
-                img_np = np.array(self.quiz_image)
-            except Exception as exc:  # noqa: BLE001
-                self.log(f"Failed to prepare quiz image for OCR: {exc}")
+                self.root.after(0, _set_busy)
+
+                self.log("Starting OCR transcription for QUIZ screenshot.")
+                reader = _get_ocr_reader()
+                if reader is None:
+                    self.log("OCR is not available (easyocr failed to initialize).")
+                    return
+
+                try:
+                    img_np = np.array(self.quiz_image)
+                except Exception as exc:  # noqa: BLE001
+                    self.log(f"Failed to prepare quiz image for OCR: {exc}")
+                    return
+
+                try:
+                    lines = reader.readtext(
+                        img_np,
+                        detail=0,
+                        paragraph=True,
+                    ) or []
+                    text = "\n".join(
+                        line.strip() for line in lines if isinstance(line, str)
+                    ).strip()
+                except Exception as exc:  # noqa: BLE001
+                    self.log(f"OCR failed for quiz screenshot: {exc}")
+                    text = ""
+
+                self.quiz_text = text
+                display_text = (text or "").strip() or "(no text detected)"
+                self.log(f"Quiz OCR text:\n{display_text}")
+
+                # Automatically ask the AI to answer this quiz using the current
+                # transcribed book text as context (if available).
+                if text.strip():
+                    self.log(
+                        "Automatically answering quiz from book transcript after OCR.",
+                    )
+                    # Trigger the normal quiz flow on the main thread; it will run
+                    # its work in the background as usual.
+                    self.root.after(0, self.on_quiz)
+            finally:
                 self.root.after(0, _set_idle)
-                return
-
-            try:
-                lines = reader.readtext(
-                    img_np,
-                    detail=0,
-                    paragraph=True,
-                ) or []
-                text = "\n".join(
-                    line.strip() for line in lines if isinstance(line, str)
-                ).strip()
-            except Exception as exc:  # noqa: BLE001
-                self.log(f"OCR failed for quiz screenshot: {exc}")
-                text = ""
-
-            self.quiz_text = text
-            display_text = (text or "").strip() or "(no text detected)"
-            self.log(f"Quiz OCR text:\n{display_text}")
-
-            self.root.after(0, _set_idle)
-
-            # Automatically ask the AI to answer this quiz using the current
-            # transcribed book text as context (if available).
-            if text.strip():
-                self.log(
-                    "Automatically answering quiz from book transcript after OCR.",
-                )
-                # Trigger the normal quiz flow on the main thread; it will run
-                # its work in the background as usual.
-                self.root.after(0, self.on_quiz)
+                self._quiz_transcribing = False
+                self.root.after(0, self._maybe_process_pending_quiz)
 
         self._run_in_background(task)
 
@@ -1034,6 +1148,7 @@ return (function(fromVal, toVal) {
                     pass
                 self.driver = None
             self.root.after(0, self._stop_easy_book_clipboard_watcher)
+            self.root.after(0, self._stop_easy_quiz_clipboard_watcher)
             self.root.after(0, self.root.destroy)
 
         self._run_in_background(task)
