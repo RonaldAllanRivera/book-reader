@@ -13,20 +13,22 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0
   - `2. Transcribe Book Screenshots` button to batch-run local OCR (easyocr) over all pasted pages, with a progress bar.
   - Full-page transcripts logged in the GUI, with a progress bar indicating transcription progress.
 - Local OCR implementation using `easyocr` + `Pillow` + `numpy` (no external Tesseract executable required).
- - Screenshot-based quiz workflow in the Tkinter GUI:
-   - `Paste QUIZ Screenshot` button to capture the current quiz question (question + options) from the clipboard.
-   - `Transcribe Quiz Screenshot` button to run OCR over the quiz image and log the raw OCR text.
-   - `3. Answer Quiz from Book` button to parse the OCR text into question + options, combine it with the transcribed book text, and call the LLM for a suggested answer.
-   - Clear quiz result blocks in the GUI log showing the question, options, and which option the AI chose.
- - Convenience controls in the Tkinter GUI:
-   - `Lexile Levels` button that reads `LEXILE_FROM` and `LEXILE_TO` from the environment and fills the platform's Lexile Level **From/To** inputs via Selenium/JavaScript.
-   - Keyboard shortcuts: `Ctrl+B`/`Ctrl+Q` for pasting book/quiz screenshots and `Ctrl+N`/`Ctrl+W` for transcribing book/quiz screenshots.
-   - `Clear BOOK Screenshots` button and per-thumbnail `X` buttons to remove individual book page screenshots and keep transcripts in sync.
- - Browser driver selection in the Tkinter GUI:
-   - Driver dropdown with support for **Auto**, **Snap Chromium**, **Selenium Manager**, **WebDriverManager**, and **Custom (env paths)**.
-   - Improved Ubuntu compatibility by detecting snap-wrapper `chromedriver` and using the snap-installed Chromium binary when needed.
-   - Additional driver startup logging (including full tracebacks in the GUI log on failures).
- - Improved error and traceback logging in the GUI.
+- Convenience controls in the Tkinter GUI:
+  - `Clear All` button to reset book transcripts/screenshots, quiz transcripts/screenshots, and clear the GUI log output.
+  - `Enable Easy Screenshot for Book` checkbox (Ubuntu-friendly) that automatically appends new clipboard images as book page screenshots after `PrtSc` + `Ctrl+C`.
+  - `Lexile Levels` button that reads `LEXILE_FROM` and `LEXILE_TO` from the environment and fills the platform's Lexile Level **From/To** inputs via Selenium/JavaScript.
+  - Keyboard shortcuts: `Ctrl+B`/`Ctrl+Q` for pasting book/quiz screenshots and `Ctrl+N`/`Ctrl+W` for transcribing book/quiz screenshots.
+  - `Clear BOOK Screenshots` button and per-thumbnail `X` buttons to remove individual book page screenshots and keep transcripts in sync.
+- Screenshot-based quiz workflow in the Tkinter GUI:
+  - `Paste QUIZ Screenshot` button to capture the current quiz question (question + options) from the clipboard.
+  - `Transcribe Quiz Screenshot` button to run OCR over the quiz image and log the raw OCR text.
+  - `3. Answer Quiz from Book` button to parse the OCR text into question + options, combine it with the transcribed book text, and call the LLM for a suggested answer.
+  - Clear quiz result blocks in the GUI log showing the question, options, and which option the AI chose.
+- Browser driver selection in the Tkinter GUI:
+  - Driver dropdown with support for **Auto**, **Snap Chromium**, **Selenium Manager**, **WebDriverManager**, and **Custom (env paths)**.
+  - Improved Ubuntu compatibility by detecting snap-wrapper `chromedriver` and using the snap-installed Chromium binary when needed.
+  - Additional driver startup logging (including full tracebacks in the GUI log on failures).
+- Improved error and traceback logging in the GUI.
 
 ### Changed
 - Tkinter GUI reading flow:

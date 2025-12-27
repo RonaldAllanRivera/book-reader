@@ -3,8 +3,26 @@ import threading
 import re
 import os
 import time
+import hashlib
+from collections import deque
 import traceback
-from tkinter import BOTH, END, LEFT, RIGHT, Y, Button, Frame, Label, Scrollbar, Text, Tk, DoubleVar, StringVar
+from tkinter import (
+    BOTH,
+    END,
+    LEFT,
+    RIGHT,
+    Y,
+    Button,
+    Checkbutton,
+    Frame,
+    Label,
+    Scrollbar,
+    Text,
+    Tk,
+    BooleanVar,
+    DoubleVar,
+    StringVar,
+)
 from tkinter import ttk
 
 import numpy as np
@@ -44,6 +62,10 @@ class TkApp:
         self.driver_mode_labels = [label for label, _ in self.driver_mode_choices]
         self.driver_mode_map = {label: mode for label, mode in self.driver_mode_choices}
         self.driver_mode_var = StringVar(value=self.driver_mode_labels[0])
+        self.easy_book_screenshot_var = BooleanVar(value=False)
+        self._easy_book_clipboard_job: str | None = None
+        self._easy_book_clipboard_seen: deque[str] = deque(maxlen=200)
+        self._easy_book_clipboard_last_sig: str | None = None
         self.page_images: list[Image.Image] = []
         self.page_texts: list[str] = []
         self.quiz_image: Image.Image | None = None
@@ -201,6 +223,17 @@ class TkApp:
         )
         self.clear_all_button.pack(side=RIGHT)
 
+        easy_frame = Frame(self.root)
+        easy_frame.pack(fill="x", padx=8, pady=(0, 4))
+
+        self.easy_book_screenshot_check = Checkbutton(
+            easy_frame,
+            text="Enable Easy Screenshot for Book",
+            variable=self.easy_book_screenshot_var,
+            command=self.on_toggle_easy_book_screenshot,
+        )
+        self.easy_book_screenshot_check.pack(side=LEFT)
+
         progress_frame = Frame(self.root)
         progress_frame.pack(fill="x", padx=8, pady=(0, 4))
 
@@ -333,15 +366,17 @@ class TkApp:
             self._set_progress(0.0)
             self.log("Deleted the last BOOK page screenshot; none remain.")
 
-    def _grab_image_from_clipboard(self) -> Image.Image | None:
+    def _grab_image_from_clipboard(self, *, silent: bool = False) -> Image.Image | None:
         try:
             data = ImageGrab.grabclipboard()
         except Exception as exc:  # noqa: BLE001
-            self.log(f"Could not read image from clipboard: {exc}")
+            if not silent:
+                self.log(f"Could not read image from clipboard: {exc}")
             return None
 
         if data is None:
-            self.log("Clipboard does not contain an image.")
+            if not silent:
+                self.log("Clipboard does not contain an image.")
             return None
 
         image: Image.Image | None = None
@@ -351,14 +386,78 @@ class TkApp:
             try:
                 image = Image.open(data[0])
             except Exception as exc:  # noqa: BLE001
-                self.log(f"Could not open image from clipboard file: {exc}")
+                if not silent:
+                    self.log(f"Could not open image from clipboard file: {exc}")
                 return None
 
         if image is None:
-            self.log("Clipboard content is not an image.")
+            if not silent:
+                self.log("Clipboard content is not an image.")
             return None
 
         return image.convert("RGB")
+
+    def _image_signature(self, image: Image.Image) -> str:
+        thumb = image.copy()
+        thumb.thumbnail((96, 96), Image.LANCZOS)
+        payload = f"{thumb.mode}|{thumb.size[0]}x{thumb.size[1]}".encode("utf-8") + thumb.tobytes()
+        return hashlib.sha256(payload).hexdigest()
+
+    def on_toggle_easy_book_screenshot(self) -> None:
+        if self.easy_book_screenshot_var.get():
+            self._start_easy_book_clipboard_watcher()
+            self.log("Easy Book Screenshot enabled (clipboard watcher running).")
+        else:
+            self._stop_easy_book_clipboard_watcher()
+            self.log("Easy Book Screenshot disabled.")
+
+    def _start_easy_book_clipboard_watcher(self) -> None:
+        if self._easy_book_clipboard_job is not None:
+            return
+        self._easy_book_clipboard_last_sig = None
+        self._poll_easy_book_clipboard()
+
+    def _stop_easy_book_clipboard_watcher(self) -> None:
+        job = self._easy_book_clipboard_job
+        self._easy_book_clipboard_job = None
+        if job is None:
+            return
+        try:
+            self.root.after_cancel(job)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _poll_easy_book_clipboard(self) -> None:
+        if not self.easy_book_screenshot_var.get():
+            self._easy_book_clipboard_job = None
+            return
+
+        try:
+            image = self._grab_image_from_clipboard(silent=True)
+            if image is not None:
+                if len(self.page_images) >= 50:
+                    self.easy_book_screenshot_var.set(False)
+                    self._stop_easy_book_clipboard_watcher()
+                    self.log(
+                        "Reached 50 BOOK screenshots; Easy Book Screenshot has been disabled. "
+                        "Use Clear BOOK Screenshots / Clear All to reset.",
+                    )
+                    return
+
+                sig = self._image_signature(image)
+                if sig != self._easy_book_clipboard_last_sig and sig not in self._easy_book_clipboard_seen:
+                    self._easy_book_clipboard_last_sig = sig
+                    self._easy_book_clipboard_seen.append(sig)
+                    self.page_images.append(image)
+                    index = len(self.page_images)
+                    self._show_last_image(image)
+                    self.log(
+                        f"Added BOOK page screenshot #{index} from clipboard (easy mode) "
+                        f"({image.width}x{image.height}).",
+                    )
+                    self._rebuild_thumbnails()
+        finally:
+            self._easy_book_clipboard_job = self.root.after(350, self._poll_easy_book_clipboard)
 
     def on_paste_screenshot(self) -> None:
         image = self._grab_image_from_clipboard()
@@ -787,6 +886,7 @@ return (function(fromVal, toVal) {
                 self.root.after(0, self.on_quiz)
 
         self._run_in_background(task)
+
     def _parse_quiz_text(self, text: str) -> tuple[str, list[str]]:
         lines = [line.strip() for line in (text or "").splitlines()]
         non_empty = [line for line in lines if line]
@@ -933,6 +1033,7 @@ return (function(fromVal, toVal) {
                 except Exception:  # noqa: BLE001
                     pass
                 self.driver = None
+            self.root.after(0, self._stop_easy_book_clipboard_watcher)
             self.root.after(0, self.root.destroy)
 
         self._run_in_background(task)

@@ -88,11 +88,15 @@
   - For each page you want to "read":
     - Use Windows Snipping Tool / Print Screen / Lightshot to capture the page (ensure it is copied to the clipboard).
     - In the Tk GUI, click **"Paste BOOK Screenshot"** to add that page. All pages are shown as thumbnails and the latest page appears in a preview area.
+    - On Ubuntu, you can optionally enable **"Enable Easy Screenshot for Book"** (below the Driver dropdown) to automatically append new clipboard images as book page screenshots after you take a screenshot and copy it (e.g., `PrtSc` then `Ctrl+C`).
   - When you have pasted all pages for a session, click **"2. Transcribe Book Screenshots"**:
     - The GUI batch-runs local OCR (easyocr) over each screenshot.
     - A **progress bar** shows how many pages have been processed.
     - The **full transcript per page** is logged in the GUI text area as `Transcript page N:` blocks.
   - You can click the same button again while it is running to request a graceful stop after the current page.
+  - Reset controls:
+    - **Clear BOOK Screenshots** clears the current book screenshots and associated transcripts.
+    - **Clear All** clears both book and quiz screenshots/transcripts and resets the GUI state.
 
 ### 4.3 Quiz Capture & AI Suggestion
 

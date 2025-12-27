@@ -60,9 +60,11 @@ At a high level, this tool:
 -- **Tkinter desktop controller (recommended workflow)**
   - Small GUI window to launch the reading site, manage **book** and **quiz** screenshots, and call the quiz assistant.
   - Supports a **screenshot-based reading workflow**: paste page screenshots from the clipboard, see thumbnails for all pages, and batch-transcribe them with local OCR.
+  - Optional **"Enable Easy Screenshot for Book"** checkbox (Ubuntu): when enabled, the GUI watches the clipboard and automatically appends new clipboard images as book page screenshots after you take a screenshot and copy it (e.g., `PrtSc` then `Ctrl+C`). Note that this feature requires the clipboard to contain an image and may not work with all screenshot tools, especially on Wayland.
   - Supports a **screenshot-based quiz workflow**: paste quiz screenshots from the clipboard, transcribe them with OCR, and send question + options (plus optional book context) to the LLM.
   - Quiz results (question, options, and which option the AI chose) are logged clearly in the GUI so you can manually click the best choice in the quiz UI.
   - Chrome remains a normal external window; Tkinter is only the control panel.
+  - **Clear All** button: clears all book and quiz screenshots, and resets the GUI state.
 
 - **Lexile level helper**
   - Optional **"Lexile Levels"** button in the Tkinter GUI that fills the platform's **Lexile Level From/To** inputs using `LEXILE_FROM` and `LEXILE_TO` from your `.env`.
@@ -288,6 +290,15 @@ For image-based books and quizzes, the Tkinter GUI provides a **paste-screenshot
      - The GUI will:
        - Store the image in a page list.
        - Show a preview of the latest page and a thumbnail for each pasted screenshot.
+
+   **Ubuntu shortcut (optional): Easy Screenshot for Book**
+
+   - Enable the checkbox **"Enable Easy Screenshot for Book"** (below the Driver dropdown).
+   - Take a screenshot on Ubuntu (example: press `PrtSc`) and then copy it to the clipboard (`Ctrl+C`).
+   - The GUI will automatically add the screenshot as the next **Book** page without clicking **"Paste BOOK Screenshot"**.
+   - Notes:
+     - This only works when your screenshot tool puts an **image** into the clipboard.
+     - On Wayland, some screenshot tools behave differently. If `PrtSc` + `Ctrl+C` does not produce a clipboard image, use a tool that supports *Copy to clipboard* (e.g., Flameshot).
 
 5. **Batch-transcribe all pasted book pages**
 
