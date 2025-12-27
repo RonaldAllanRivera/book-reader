@@ -190,6 +190,17 @@ class TkApp:
         )
         self.driver_mode_combo.pack(side=LEFT, padx=(8, 0))
 
+        self.clear_all_button = Button(
+            driver_frame,
+            text="Clear All",
+            command=self.on_clear_all,
+            bg="#E0E0E0",
+            fg="black",
+            activebackground="#BDBDBD",
+            activeforeground="black",
+        )
+        self.clear_all_button.pack(side=RIGHT)
+
         progress_frame = Frame(self.root)
         progress_frame.pack(fill="x", padx=8, pady=(0, 4))
 
@@ -241,6 +252,11 @@ class TkApp:
         self.log_text.see(END)
         self.log_text.configure(state="disabled")
         self.status_label.configure(text=message)
+
+    def _clear_log_text(self) -> None:
+        self.log_text.configure(state="normal")
+        self.log_text.delete("1.0", END)
+        self.log_text.configure(state="disabled")
 
     def _set_progress(self, fraction: float) -> None:
         value = max(0.0, min(1.0, fraction)) * 100.0
@@ -384,6 +400,37 @@ class TkApp:
         self.image_label.configure(image="", text="No screenshots pasted yet.")
         self._set_progress(0.0)
         self.log(f"Cleared {count} BOOK screenshots and any associated transcripts.")
+
+    def on_clear_all(self) -> None:
+        if self._book_transcribing:
+            self.log(
+                "Cannot clear transcripts while transcription is running. "
+                "Please stop transcription first.",
+            )
+            return
+
+        had_book = bool(self.page_images) or bool(self.page_texts)
+        had_quiz = bool(self.quiz_image) or bool(self.quiz_text)
+
+        self.page_images.clear()
+        self.page_texts.clear()
+        self.thumb_images.clear()
+        for widget in self.thumb_frame.winfo_children():
+            widget.destroy()
+
+        self.quiz_image = None
+        self.quiz_text = None
+
+        self._last_image_tk = None
+        self.image_label.configure(image="", text="No screenshots pasted yet.")
+        self._set_progress(0.0)
+
+        self._clear_log_text()
+
+        if not had_book and not had_quiz:
+            self.log("Nothing to clear.")
+        else:
+            self.log("Cleared all BOOK and QUIZ transcripts/screenshots.")
 
     def on_paste_quiz_screenshot(self) -> None:
         image = self._grab_image_from_clipboard()
