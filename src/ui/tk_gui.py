@@ -8,6 +8,9 @@ from collections import deque
 import traceback
 from tkinter import (
     BOTH,
+    Canvas,
+    X,
+    BOTTOM,
     END,
     LEFT,
     RIGHT,
@@ -269,8 +272,31 @@ class TkApp:
         self.image_label = Label(self.root, text="No screenshots pasted yet.", anchor="w")
         self.image_label.pack(fill="x", padx=8, pady=(0, 4))
 
-        self.thumb_frame = Frame(self.root)
-        self.thumb_frame.pack(fill="x", padx=8, pady=(0, 4))
+        thumb_container = Frame(self.root)
+        thumb_container.pack(fill="x", padx=8, pady=(0, 4))
+
+        self.thumb_canvas = Canvas(thumb_container, height=140, highlightthickness=0)
+        self.thumb_canvas.pack(side=LEFT, fill="x", expand=True)
+
+        self.thumb_scrollbar = Scrollbar(
+            thumb_container,
+            orient="horizontal",
+            command=self.thumb_canvas.xview,
+        )
+        self.thumb_scrollbar.pack(side=BOTTOM, fill=X)
+        self.thumb_canvas.configure(xscrollcommand=self.thumb_scrollbar.set)
+
+        self.thumb_frame = Frame(self.thumb_canvas)
+        self._thumb_window = self.thumb_canvas.create_window(
+            (0, 0),
+            window=self.thumb_frame,
+            anchor="nw",
+        )
+
+        self.thumb_frame.bind("<Configure>", self._on_thumb_frame_configure)
+        self.thumb_canvas.bind("<Configure>", self._on_thumb_canvas_configure)
+        self.thumb_canvas.bind("<Enter>", self._bind_thumb_scroll)
+        self.thumb_canvas.bind("<Leave>", self._unbind_thumb_scroll)
 
         text_frame = Frame(self.root)
         text_frame.pack(fill=BOTH, expand=True, padx=8, pady=(0, 8))
@@ -296,6 +322,34 @@ class TkApp:
         self.root.bind_all("<Control-q>", lambda event: self.on_paste_quiz_screenshot())
         self.root.bind_all("<Control-n>", lambda event: self.on_read())
         self.root.bind_all("<Control-w>", lambda event: self.on_transcribe_quiz())
+
+    def _on_thumb_frame_configure(self, event) -> None:
+        self.thumb_canvas.configure(scrollregion=self.thumb_canvas.bbox("all"))
+
+    def _on_thumb_canvas_configure(self, event) -> None:
+        self.thumb_canvas.configure(scrollregion=self.thumb_canvas.bbox("all"))
+
+    def _bind_thumb_scroll(self, event) -> None:
+        self.thumb_canvas.bind("<MouseWheel>", self._on_thumb_mousewheel)
+        self.thumb_canvas.bind("<Button-4>", self._on_thumb_mousewheel)
+        self.thumb_canvas.bind("<Button-5>", self._on_thumb_mousewheel)
+
+    def _unbind_thumb_scroll(self, event) -> None:
+        self.thumb_canvas.unbind("<MouseWheel>")
+        self.thumb_canvas.unbind("<Button-4>")
+        self.thumb_canvas.unbind("<Button-5>")
+
+    def _on_thumb_mousewheel(self, event) -> None:
+        delta = 0
+        if hasattr(event, "delta") and event.delta:
+            delta = -1 * int(event.delta / 120)
+        elif hasattr(event, "num"):
+            if event.num == 4:
+                delta = -1
+            elif event.num == 5:
+                delta = 1
+        if delta:
+            self.thumb_canvas.xview_scroll(delta, "units")
 
     def _append_log(self, message: str, tag: str) -> None:
         self.log_text.configure(state="normal")
@@ -357,6 +411,12 @@ class TkApp:
                 pady=0,
             )
             delete_btn.pack(side="top", fill="x")
+
+        try:
+            self.thumb_canvas.update_idletasks()
+            self.thumb_canvas.configure(scrollregion=self.thumb_canvas.bbox("all"))
+        except Exception:  # noqa: BLE001
+            pass
 
     def _delete_book_screenshots(self, index: int) -> None:
         if index < 0 or index >= len(self.page_images):
