@@ -258,6 +258,23 @@ source .venv/bin/activate
 python scripts/run_gui.py
 ```
 
+Ubuntu (no terminal):
+
+```bash
+chmod +x run_gui.sh
+chmod +x BookReader.desktop
+```
+
+- Recommended: double-click `run_gui.sh`.
+- Alternative: double-click `BookReader.desktop` to launch.
+  - Tip: copy `BookReader.desktop` to `~/Desktop/` for easier access.
+  - Note: this `.desktop` entry uses an **absolute path** to the project. If you move the project folder to a new location/PC, update the `Exec=` and `Path=` lines.
+- If Ubuntu opens the `.desktop` file in a text editor, mark it as trusted (example):
+
+  ```bash
+  gio set BookReader.desktop metadata::trusted true
+  ```
+
 The Tkinter GUI is the primary way to use this project. It opens the browser, coordinates screenshots, runs OCR, and calls the LLM.
 
 ### How to Run – Tkinter GUI (recommended workflow)

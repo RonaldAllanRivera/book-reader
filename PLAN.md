@@ -70,6 +70,7 @@
 ### 4.1 Login & Navigation
 
 1. Start the Tkinter GUI: `python scripts/run_gui.py` (or equivalent entrypoint).
+   - Ubuntu convenience: you can also launch via `run_gui.sh` or the `BookReader.desktop` shortcut to avoid typing terminal commands.
 2. Script steps (reading always followed by quiz assist):
    - Launch browser (Selenium WebDriver).
    - Go to the configured base URL of the reading platform.

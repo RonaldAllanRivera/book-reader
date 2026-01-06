@@ -31,6 +31,9 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0
   - Improved Ubuntu compatibility by detecting snap-wrapper `chromedriver` and using the snap-installed Chromium binary when needed.
   - Additional driver startup logging (including full tracebacks in the GUI log on failures).
 - Improved error and traceback logging in the GUI.
+- Ubuntu launcher helpers:
+  - `run_gui.sh` script to launch the Tkinter GUI using the project-local `.venv`.
+  - `BookReader.desktop` desktop entry for double-click launching on Ubuntu.
 
 ### Changed
 - Tkinter GUI reading flow:

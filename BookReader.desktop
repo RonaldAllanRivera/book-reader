@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Book Reader
+Comment=Tkinter controller for screenshots, OCR, and quiz assistance
+Exec=/home/allan/code/python/book-reader/run_gui.sh
+Path=/home/allan/code/python/book-reader
+Terminal=false
+Categories=Education;Utility;
