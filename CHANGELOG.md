@@ -18,6 +18,8 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0
   - `Enable Easy Screenshot for Book` checkbox (Ubuntu-friendly) that automatically appends new clipboard images as book page screenshots after `PrtSc` + `Ctrl+C`.
   - `Enable Easy Screenshot for Quiz` checkbox (Ubuntu-friendly) that automatically pastes new clipboard images as quiz screenshots, runs quiz OCR, and triggers quiz answering.
     - The Book and Quiz easy-screenshot modes are mutually exclusive to avoid clipboard routing conflicts.
+  - Scrollable book screenshot thumbnails (supports large sets like 100+ screenshots).
+  - `Copy Book Transcript` button to copy all transcribed book pages to the clipboard in page order.
   - `Lexile Levels` button that reads `LEXILE_FROM` and `LEXILE_TO` from the environment and fills the platform's Lexile Level **From/To** inputs via Selenium/JavaScript.
   - Keyboard shortcuts: `Ctrl+B`/`Ctrl+Q` for pasting book/quiz screenshots and `Ctrl+N`/`Ctrl+W` for transcribing book/quiz screenshots.
   - `Clear BOOK Screenshots` button and per-thumbnail `X` buttons to remove individual book page screenshots and keep transcripts in sync.

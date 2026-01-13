@@ -36,6 +36,7 @@ class AppConfig:
     llm: LLMConfig
     username: str
     password: str
+    max_book_screenshots: int
 
 
 def _load_raw_config() -> Dict[str, Any]:
@@ -65,6 +66,13 @@ def load_config() -> AppConfig:
     username = os.getenv("SLZ_USERNAME", "")
     password = os.getenv("SLZ_PASSWORD", "")
     api_key = os.getenv("OPENAI_API_KEY", "")
+
+    try:
+        max_book_screenshots = int(os.getenv("MAX_BOOK_SCREENSHOTS", "200"))
+    except ValueError:
+        max_book_screenshots = 200
+    if max_book_screenshots < 1:
+        max_book_screenshots = 1
 
     # Username and password are optional because the user may prefer to log in manually.
     # However, an API key is still required for the remote LLM provider.
@@ -101,4 +109,5 @@ def load_config() -> AppConfig:
         llm=llm,
         username=username,
         password=password,
+        max_book_screenshots=max_book_screenshots,
     )

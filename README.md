@@ -60,6 +60,7 @@ At a high level, this tool:
 -- **Tkinter desktop controller (recommended workflow)**
   - Small GUI window to launch the reading site, manage **book** and **quiz** screenshots, and call the quiz assistant.
   - Supports a **screenshot-based reading workflow**: paste page screenshots from the clipboard, see thumbnails for all pages, and batch-transcribe them with local OCR.
+  - Book screenshot thumbnails are **scrollable** (works well with 100+ screenshots), so you can reach and delete any page.
   - Optional **"Enable Easy Screenshot for Book"** checkbox (Ubuntu): when enabled, the GUI watches the clipboard and automatically appends new clipboard images as book page screenshots after you take a screenshot and copy it (e.g., `PrtSc` then `Ctrl+C`). Note that this feature requires the clipboard to contain an image and may not work with all screenshot tools, especially on Wayland.
   - Optional **"Enable Easy Screenshot for Quiz"** checkbox (Ubuntu): when enabled, the GUI watches the clipboard and automatically pastes new clipboard images as the quiz screenshot, runs quiz OCR, and triggers the quiz answer flow.
     - The Book and Quiz easy-screenshot modes are mutually exclusive to avoid clipboard routing conflicts.
@@ -67,6 +68,7 @@ At a high level, this tool:
   - Quiz results (question, options, and which option the AI chose) are logged clearly in the GUI so you can manually click the best choice in the quiz UI.
   - Chrome remains a normal external window; Tkinter is only the control panel.
   - **Clear All** button: clears all book and quiz screenshots, and resets the GUI state.
+  - **Copy Book Transcript** button: copies all transcribed book pages to the clipboard in page order.
 
 - **Lexile level helper**
   - Optional **"Lexile Levels"** button in the Tkinter GUI that fills the platform's **Lexile Level From/To** inputs using `LEXILE_FROM` and `LEXILE_TO` from your `.env`.
@@ -217,12 +219,14 @@ copy .env.example .env
    SLZ_BASE_URL=https://your-reading-platform.example.com/login
    LEXILE_FROM=600
    LEXILE_TO=700
+   MAX_BOOK_SCREENSHOTS=200
    ```
 
    Notes:
    - `OPENAI_API_KEY` is required for the LLM quiz assistance.
    - `SLZ_BASE_URL` should be the exact login URL you normally use for your reading platform.
    - `LEXILE_FROM` and `LEXILE_TO` are optional and configure the default Lexile range used when you click **"Lexile Levels"** in the GUI.
+   - `MAX_BOOK_SCREENSHOTS` caps how many book page screenshots can be stored in the GUI (applies to both manual paste and Easy Screenshot mode).
 
 ### 5. Adjust config (optional)
 
@@ -337,6 +341,8 @@ For image-based books and quizzes, the Tkinter GUI provides a **paste-screenshot
      - Update a **progress bar** as it processes pages.
      - Log the **full transcription per page** in the text area, prefixed with `Transcript page N:`.
    - While transcription is running, clicking the same button again requests a graceful stop after the current page.
+
+   - After transcription, you can click **"Copy Book Transcript"** to copy the full book transcript (all pages) to the clipboard.
 
 6. **Transcribe quiz questions from screenshots**
 

@@ -236,6 +236,17 @@ class TkApp:
         )
         self.clear_all_button.pack(side=RIGHT)
 
+        self.copy_book_transcript_button = Button(
+            driver_frame,
+            text="Copy Book Transcript",
+            command=self.on_copy_book_transcript,
+            bg="#E0E0E0",
+            fg="black",
+            activebackground="#BDBDBD",
+            activeforeground="black",
+        )
+        self.copy_book_transcript_button.pack(side=RIGHT, padx=(0, 8))
+
         easy_frame = Frame(self.root)
         easy_frame.pack(fill="x", padx=8, pady=(0, 4))
 
@@ -603,11 +614,11 @@ class TkApp:
         try:
             image = self._grab_image_from_clipboard(silent=True)
             if image is not None:
-                if len(self.page_images) >= 50:
+                if len(self.page_images) >= self.config.max_book_screenshots:
                     self.easy_book_screenshot_var.set(False)
                     self._stop_easy_book_clipboard_watcher()
                     self.log(
-                        "Reached 50 BOOK screenshots; Easy Book Screenshot has been disabled. "
+                        f"Reached {self.config.max_book_screenshots} BOOK screenshots; Easy Book Screenshot has been disabled. "
                         "Use Clear BOOK Screenshots / Clear All to reset.",
                     )
                     return
@@ -628,6 +639,13 @@ class TkApp:
             self._easy_book_clipboard_job = self.root.after(350, self._poll_easy_book_clipboard)
 
     def on_paste_screenshot(self) -> None:
+        if len(self.page_images) >= self.config.max_book_screenshots:
+            self.log(
+                f"Reached {self.config.max_book_screenshots} BOOK screenshots; cannot paste more. "
+                "Use Clear BOOK Screenshots / Clear All to reset, or increase MAX_BOOK_SCREENSHOTS in .env.",
+            )
+            return
+
         image = self._grab_image_from_clipboard()
         if image is None:
             return
@@ -698,6 +716,35 @@ class TkApp:
             self.log("Nothing to clear.")
         else:
             self.log("Cleared all BOOK and QUIZ transcripts/screenshots.")
+
+    def on_copy_book_transcript(self) -> None:
+        if self._book_transcribing:
+            self.log(
+                "Cannot copy book transcript while transcription is running. "
+                "Please stop transcription first.",
+            )
+            return
+
+        if not self.page_texts:
+            self.log("No book transcript available yet. Transcribe book screenshots first.")
+            return
+
+        parts: list[str] = []
+        for index, text in enumerate(self.page_texts, start=1):
+            display_text = (text or "").strip() or "(no text detected)"
+            parts.append(f"Transcript page {index}:\n{display_text}")
+
+        full_text = "\n\n".join(parts)
+
+        try:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(full_text)
+            self.root.update()
+        except Exception as exc:  # noqa: BLE001
+            self.log(f"Failed to copy book transcript to clipboard: {exc}")
+            return
+
+        self.log(f"Copied BOOK transcript to clipboard ({len(self.page_texts)} pages).")
 
     def on_paste_quiz_screenshot(self) -> None:
         image = self._grab_image_from_clipboard()
